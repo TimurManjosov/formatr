@@ -28,7 +28,7 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
         const v = (ctx as Ctx)[p.key];
         if (v === undefined || v === null) {
           if (onMissing === 'error') {
-            throw new FormatrError(`Missing key: ${p.key}`);
+            throw new FormatrError(`Missing key "${p.key}"`);
           } else if (onMissing === 'keep') {
             out += `{${p.key}}`;
           } else {
