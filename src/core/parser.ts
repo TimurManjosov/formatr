@@ -1,17 +1,8 @@
-// src/core/parser.ts
-import type { Node, TemplateAST } from './ast';
-import { FormatrError } from './errors';
+import { FormatrError } from "./errors";
+import type { TemplateAST, Node, FilterCall } from "./ast";
 
-// identifier: [A-Za-z_][A-Za-z0-9_]*
 const ID_START = /[A-Za-z_]/;
-const ID_CONT = /[A-Za-z0-9_]/;
-
-function isIdStart(ch: string | undefined): boolean {
-  return !!ch && ID_START.test(ch);
-}
-function isIdCont(ch: string | undefined): boolean {
-  return !!ch && ID_CONT.test(ch);
-}
+const ID_CONT  = /[A-Za-z0-9_]/;
 
 export function parseTemplate(source: string): TemplateAST {
   const nodes: Node[] = [];
@@ -19,51 +10,93 @@ export function parseTemplate(source: string): TemplateAST {
   let textStart = 0;
 
   const pushTextIfAny = (end: number) => {
-    if (end > textStart) {
-      nodes.push({ kind: 'Text', value: source.slice(textStart, end) });
+    if (end > textStart) nodes.push({ kind: "Text", value: source.slice(textStart, end) });
+  };
+
+  const readIdentifier = (): string => {
+    if (!ID_START.test(source.charAt(i))) {
+      throw new FormatrError(`Expected identifier`, i);
     }
+    const start = i++;
+    while (i < source.length && ID_CONT.test(source.charAt(i))) i++;
+    return source.slice(start, i);
+  };
+
+  const readFilterArgs = (): string[] => {
+    // grammar: ":" <arg> ("," <arg>)*
+    // arg = run of non-comma, non-} characters (no escaping for now)
+    const args: string[] = [];
+    if (source[i] === ":") {
+      i++; // skip ':'
+      let argStart = i;
+      while (i < source.length && source[i] !== "}") {
+        if (source[i] === ",") {
+          args.push(source.slice(argStart, i).trim());
+          i++; // skip ','
+          argStart = i;
+          continue;
+        }
+        i++;
+      }
+      // don't consume '}' here; caller will check it
+      args.push(source.slice(argStart, i).trim());
+    }
+    return args;
+  };
+
+  const readFilters = (): FilterCall[] => {
+    const filters: FilterCall[] = [];
+    while (source[i] === "|") {
+      i++; // skip '|'
+      const name = readIdentifier();
+      const posBeforeArgs = i;
+      const args = readFilterArgs(); // may or may not read any (only if ':' found)
+      // reading args stops before '}', so if neither ':' nor next token, we stay at same i
+      filters.push({ name, args });
+    }
+    return filters;
   };
 
   while (i < source.length) {
-    const ch = source.charAt(i);
+    const ch = source[i];
 
-    if (ch === '{') {
-      // Escaped "{{" → literal "{"
-      if (source.charAt(i + 1) === '{') {
+    if (ch === "{") {
+      // escaped "{{"
+      if (source[i + 1] === "{") {
         pushTextIfAny(i);
-        nodes.push({ kind: 'Text', value: '{' });
+        nodes.push({ kind: "Text", value: "{" });
         i += 2;
         textStart = i;
         continue;
       }
 
-      // Start of placeholder: {identifier}
+      // start placeholder
       pushTextIfAny(i);
-      i++; // skip '{'
-      const start = i;
+      i++; // '{'
 
-      if (!isIdStart(source.charAt(i))) {
-        throw new FormatrError(`Expected identifier after '{'`, i);
-      }
-      i++;
-      while (isIdCont(source.charAt(i))) i++;
+      const key = readIdentifier();
 
-      const key = source.slice(start, i);
+      // optional filter chain
+      const filters = readFilters();
 
-      if (source.charAt(i) !== '}') {
+      // close '}'
+      if (source[i] !== "}") {
         throw new FormatrError(`Expected '}' to close placeholder for "${key}"`, i);
       }
-      i++; // skip '}'
+      i++; // '}'
 
-      nodes.push({ kind: 'Placeholder', key });
+      nodes.push(filters.length
+        ? { kind: "Placeholder", key, filters }
+        : { kind: "Placeholder", key });
+
       textStart = i;
       continue;
     }
 
-    // Escaped "}}" → literal "}"
-    if (ch === '}' && source.charAt(i + 1) === '}') {
+    // escaped "}}"
+    if (ch === "}" && source[i + 1] === "}") {
       pushTextIfAny(i);
-      nodes.push({ kind: 'Text', value: '}' });
+      nodes.push({ kind: "Text", value: "}" });
       i += 2;
       textStart = i;
       continue;
@@ -72,7 +105,6 @@ export function parseTemplate(source: string): TemplateAST {
     i++;
   }
 
-  // flush trailing text
   pushTextIfAny(i);
   return { nodes };
 }

@@ -1,3 +1,17 @@
-declare function hello(name: string): string;
+type Filter = (value: unknown, ...args: string[]) => unknown;
 
-export { hello };
+type Ctx = Record<string, unknown>;
+type MissingHandler = 'error' | 'keep' | ((key: string) => string);
+interface CompileOptions {
+    onMissing?: MissingHandler;
+    filters?: Record<string, Filter>;
+}
+
+declare function template<T extends Ctx = Ctx>(source: string, options?: CompileOptions): (ctx: T) => string;
+
+declare class FormatrError extends Error {
+    readonly pos?: number | undefined;
+    constructor(message: string, pos?: number | undefined);
+}
+
+export { FormatrError, template };

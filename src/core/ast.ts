@@ -1,6 +1,15 @@
-// AST = the “shape” of a parsed template, independent of rendering.
 export type TextNode = { kind: 'Text'; value: string };
-export type PlaceholderNode = { kind: 'Placeholder'; key: string };
+
+export type FilterCall = {
+  name: string;
+  args: string[]; // raw string args (parsed as text, not JSON)
+};
+
+export type PlaceholderNode = {
+  kind: 'Placeholder';
+  key: string;
+  filters?: FilterCall[]; // optional chain
+};
 
 export type Node = TextNode | PlaceholderNode;
 
