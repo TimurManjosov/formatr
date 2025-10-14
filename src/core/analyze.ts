@@ -25,15 +25,7 @@ export interface AnalysisReport {
 
 export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisReport {
   const messages: Diagnostic[] = [];
-  let ast: TemplateAST;
-
-  try {
-    ast = parseTemplate(source);
-  } catch (e: unknown) {
-    // For v0.2.2 we won’t convert parser exceptions into diagnostics.
-    // (We could add a code like "parse-error" later.)
-    return { messages }; // empty; the parser would’ve thrown in user flow
-  }
+  const ast: TemplateAST = parseTemplate(source);
 
   const registry: Record<string, Filter> = {
     ...builtinFilters,
