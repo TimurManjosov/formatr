@@ -1,6 +1,5 @@
 import { compile, type CompileOptions, type Ctx } from './core/compile';
 import { parseTemplate } from './core/parser';
-export { analyze } from './core/analyze'; // <- export analyze
 
 export function template<T extends Ctx = Ctx>(
   source: string,
