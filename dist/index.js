@@ -21,6 +21,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var index_exports = {};
 __export(index_exports, {
   FormatrError: () => FormatrError,
+  analyze: () => analyze,
   template: () => template
 });
 module.exports = __toCommonJS(index_exports);
@@ -37,6 +38,93 @@ var plural = (v, singular, plural2) => {
   }
   return n === 1 ? singular : plural2;
 };
+
+// src/filters/intl.ts
+var toNumber = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+function makeIntlFilters(locale) {
+  const number = (v, rangeOrMinFrac, maxFrac) => {
+    const n = toNumber(v);
+    if (n === null) return String(v);
+    let min;
+    let max;
+    if (rangeOrMinFrac != null) {
+      const s = String(rangeOrMinFrac);
+      if (s.includes("-")) {
+        const [a, b] = s.split("-");
+        min = Number(a);
+        max = Number(b);
+      } else {
+        min = Number(s);
+        max = maxFrac != null ? Number(maxFrac) : min;
+      }
+    }
+    return new Intl.NumberFormat(locale, {
+      minimumFractionDigits: min,
+      maximumFractionDigits: max
+    }).format(n);
+  };
+  const percent = (v, frac) => {
+    const n = toNumber(v);
+    if (n === null) return String(v);
+    const digits = frac != null ? Number(frac) : 0;
+    return new Intl.NumberFormat(locale, {
+      style: "percent",
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }).format(n);
+  };
+  const currency = (v, code, frac) => {
+    const n = toNumber(v);
+    if (n === null) return String(v);
+    if (!code) throw new Error(`currency filter requires code, e.g., currency:EUR`);
+    let currencyCode = String(code).trim();
+    let fraction = frac;
+    if (currencyCode.includes(":")) {
+      const [c, f] = currencyCode.split(":");
+      currencyCode = (c ?? "").trim();
+      if (f !== void 0 && (fraction == null || fraction === "")) fraction = f;
+    }
+    currencyCode = currencyCode.toUpperCase();
+    if (!/^[A-Z]{3}$/.test(currencyCode)) {
+      const letters = currencyCode.match(/[A-Z]{3,}/);
+      if (letters && letters[0].length >= 3) {
+        currencyCode = letters[0].slice(0, 3);
+      } else {
+        throw new Error(`currency filter received invalid currency code: ${String(code)}`);
+      }
+    }
+    let digits = void 0;
+    if (fraction != null && fraction !== "") {
+      const d = Number(fraction);
+      if (Number.isFinite(d)) digits = d;
+    }
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currencyCode,
+        ...digits != null ? { minimumFractionDigits: digits, maximumFractionDigits: digits } : {}
+      }).format(n);
+    } catch {
+      return String(v);
+    }
+  };
+  const date = (v, style) => {
+    const d = v instanceof Date ? v : typeof v === "number" ? new Date(v) : new Date(String(v));
+    if (Number.isNaN(d.getTime())) return String(v);
+    const map = {
+      short: { dateStyle: "short" },
+      medium: { dateStyle: "medium" },
+      long: { dateStyle: "long" },
+      full: { dateStyle: "full" }
+    };
+    const opts = map[style ?? "medium"] ?? map.medium;
+    return new Intl.DateTimeFormat(locale, opts).format(d);
+  };
+  return { number, percent, currency, date };
+}
 
 // src/filters/index.ts
 var builtinFilters = {
@@ -60,6 +148,7 @@ function compile(ast, options = {}) {
   const onMissing = options.onMissing ?? "keep";
   const registry = {
     ...builtinFilters,
+    ...makeIntlFilters(options.locale),
     ...options.filters ?? {}
   };
   const parts = ast.nodes.map((n) => {
@@ -71,30 +160,26 @@ function compile(ast, options = {}) {
     for (const p of parts) {
       if (p.type === "text") {
         out += p.value;
-      } else {
-        let val = ctx[p.key];
-        if (val === void 0 || val === null) {
-          if (onMissing === "error") {
-            throw new FormatrError(`Missing key "${p.key}"`);
-          } else if (onMissing === "keep") {
-            out += `{${p.key}}`;
-            continue;
-          } else {
-            out += onMissing(p.key);
-            continue;
-          }
-        }
-        if (p.filters && p.filters.length) {
-          for (const f of p.filters) {
-            const fn = registry[f.name];
-            if (!fn) {
-              throw new FormatrError(`Unknown filter "${f.name}"`);
-            }
-            val = fn(val, ...f.args ?? []);
-          }
-        }
-        out += String(val);
+        continue;
       }
+      let val = ctx[p.key];
+      if (val === void 0 || val === null) {
+        if (onMissing === "error") throw new FormatrError(`Missing key "${p.key}"`);
+        if (onMissing === "keep") {
+          out += `{${p.key}}`;
+          continue;
+        }
+        out += onMissing(p.key);
+        continue;
+      }
+      if (p.filters && p.filters.length) {
+        for (const f of p.filters) {
+          const fn = registry[f.name];
+          if (!fn) throw new FormatrError(`Unknown filter "${f.name}"`);
+          val = fn(val, ...f.args ?? []);
+        }
+      }
+      out += String(val);
     }
     return out;
   };
@@ -182,6 +267,51 @@ function parseTemplate(source) {
   return { nodes };
 }
 
+// src/core/analyze.ts
+function analyze(source, options = {}) {
+  const messages = [];
+  let ast;
+  try {
+    ast = parseTemplate(source);
+  } catch (e) {
+    return { messages };
+  }
+  const registry = {
+    ...builtinFilters,
+    ...makeIntlFilters(options.locale),
+    ...options.filters ?? {}
+  };
+  for (const node of ast.nodes) {
+    if (node.kind !== "Placeholder" || !node.filters?.length) continue;
+    for (const f of node.filters) {
+      const fn = registry[f.name];
+      if (!fn) {
+        messages.push({
+          code: "unknown-filter",
+          message: `Unknown filter "${f.name}"`,
+          data: { filter: f.name }
+        });
+        continue;
+      }
+      if (f.name === "plural" && f.args.length !== 2) {
+        messages.push({
+          code: "bad-args",
+          message: `Filter "plural" requires exactly 2 args: singular, plural`,
+          data: { filter: f.name, got: f.args.length }
+        });
+      }
+      if (f.name === "currency" && f.args.length < 1) {
+        messages.push({
+          code: "bad-args",
+          message: `Filter "currency" requires at least 1 arg: currency code (e.g., EUR)`,
+          data: { filter: f.name, got: f.args.length }
+        });
+      }
+    }
+  }
+  return { messages };
+}
+
 // src/api.ts
 function template(source, options = {}) {
   const ast = parseTemplate(source);
@@ -190,5 +320,6 @@ function template(source, options = {}) {
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   FormatrError,
+  analyze,
   template
 });
