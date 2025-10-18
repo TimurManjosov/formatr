@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyze } from '../src';
+import { analyze } from '../src/core/analyze';
 
 describe('formatr: analyze()', () => {
   it('reports unknown filters', () => {

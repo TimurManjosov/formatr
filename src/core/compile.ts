@@ -10,6 +10,8 @@ export interface CompileOptions {
   onMissing?: MissingHandler;
   filters?: Record<string, Filter>;
   locale?: string;
+  // new:
+  cacheSize?: number; // default 200 (0 disables)
 }
 
 type Part =
