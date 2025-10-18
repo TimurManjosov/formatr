@@ -4,23 +4,33 @@ import type { TemplateAST } from './ast';
 import { FormatrError } from './errors';
 
 export type Ctx = Record<string, unknown>;
-
 export type MissingHandler = 'error' | 'keep' | ((key: string) => string);
 
 export interface CompileOptions {
   onMissing?: MissingHandler;
   filters?: Record<string, Filter>;
-  locale?: string; // <- add this if not there yet
+  locale?: string;
 }
 
 type Part =
   | { type: 'text'; value: string }
-  | { type: 'ph'; key: string; filters?: { name: string; args: string[] }[] };
+  | { type: 'ph'; path: string[]; filters?: { name: string; args: string[] }[] };
+
+// NEW: safe traversal with early exit
+function getPathValue(obj: unknown, path: string[]): { found: boolean; value?: unknown } {
+  let cur: any = obj;
+  for (const seg of path) {
+    if (cur == null || (typeof cur !== 'object' && typeof cur !== 'function')) {
+      return { found: false };
+    }
+    cur = cur[seg];
+  }
+  return cur === undefined ? { found: false } : { found: true, value: cur };
+}
 
 export function compile(ast: TemplateAST, options: CompileOptions = {}) {
   const onMissing = options.onMissing ?? 'keep';
 
-  // base registry: text filters + intl (with captured locale) + user filters
   const registry: Record<string, Filter> = {
     ...builtinFilters,
     ...makeIntlFilters(options.locale),
@@ -29,10 +39,10 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
 
   const parts: Part[] = ast.nodes.map((n) => {
     if (n.kind === 'Text') return { type: 'text', value: n.value };
-    // Don't include `filters` when it's undefined or empty — avoid `filters: undefined`
+    // Only include `filters` when it's present (and non-empty)
     return n.filters && n.filters.length
-      ? { type: 'ph', key: n.key, filters: n.filters }
-      : { type: 'ph', key: n.key };
+      ? { type: 'ph', path: n.path, filters: n.filters }
+      : { type: 'ph', path: n.path };
   });
 
   return function render<T extends Ctx = Ctx>(ctx: T): string {
@@ -43,17 +53,19 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
         continue;
       }
 
-      let val = (ctx as Ctx)[p.key];
-
-      if (val === undefined || val === null) {
-        if (onMissing === 'error') throw new FormatrError(`Missing key "${p.key}"`);
+      const { found, value } = getPathValue(ctx, p.path);
+      if (!found || value == null) {
+        const keyStr = p.path.join('.');
+        if (onMissing === 'error') throw new FormatrError(`Missing key "${keyStr}"`);
         if (onMissing === 'keep') {
-          out += `{${p.key}}`;
+          out += `{${keyStr}}`;
           continue;
         }
-        out += onMissing(p.key);
+        out += onMissing(keyStr);
         continue;
       }
+
+      let val: unknown = value;
 
       if (p.filters && p.filters.length) {
         for (const f of p.filters) {

@@ -2,13 +2,14 @@ export type TextNode = { kind: 'Text'; value: string };
 
 export type FilterCall = {
   name: string;
-  args: string[]; // raw string args (parsed as text, not JSON)
+  args: string[];
 };
 
+// CHANGE: key → path: string[]
 export type PlaceholderNode = {
   kind: 'Placeholder';
-  key: string;
-  filters?: FilterCall[]; // optional chain
+  path: string[]; // e.g., ["user", "name"]
+  filters?: FilterCall[];
 };
 
 export type Node = TextNode | PlaceholderNode;
