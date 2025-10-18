@@ -23,18 +23,21 @@
   "license": "MIT",
   "packageManager": "pnpm@10.18.2",
   "devDependencies": {
+    "@eslint/js": "^9.38.0",
     "@types/node": "^24.7.1",
     "@typescript-eslint/eslint-plugin": "^8.46.0",
     "@typescript-eslint/parser": "^8.46.0",
-    "eslint": "^9.37.0",
+    "eslint": "^9",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.1",
     "vitest": "^3.2.4"
   },
   "repository": "github:TimurManjosov/formatr",
-  "sideEffects": false
+  "sideEffects": false,
+  "lint": "eslint . --ext .ts"
 }

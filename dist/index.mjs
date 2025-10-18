@@ -1,3 +1,34 @@
+// src/core/cache.ts
+var LRU = class {
+  constructor(max) {
+    this.max = max;
+  }
+  map = /* @__PURE__ */ new Map();
+  get(key) {
+    const v = this.map.get(key);
+    if (v !== void 0) {
+      this.map.delete(key);
+      this.map.set(key, v);
+    }
+    return v;
+  }
+  set(key, value) {
+    if (this.max <= 0) return;
+    if (this.map.has(key)) this.map.delete(key);
+    this.map.set(key, value);
+    if (this.map.size > this.max) {
+      const first = this.map.keys().next().value;
+      this.map.delete(first);
+    }
+  }
+  size() {
+    return this.map.size;
+  }
+  clear() {
+    this.map.clear();
+  }
+};
+
 // src/filters/text.ts
 var upper = (v) => String(v).toUpperCase();
 var lower = (v) => String(v).toLowerCase();
@@ -265,53 +296,39 @@ function parseTemplate(source) {
   return { nodes };
 }
 
-// src/core/analyze.ts
-function analyze(source, options = {}) {
-  const messages = [];
-  const ast = parseTemplate(source);
-  const registry = {
-    ...builtinFilters,
-    ...makeIntlFilters(options.locale),
-    ...options.filters ?? {}
-  };
-  for (const node of ast.nodes) {
-    if (node.kind !== "Placeholder" || !node.filters?.length) continue;
-    for (const f of node.filters) {
-      const fn = registry[f.name];
-      if (!fn) {
-        messages.push({
-          code: "unknown-filter",
-          message: `Unknown filter "${f.name}"`,
-          data: { filter: f.name }
-        });
-        continue;
-      }
-      if (f.name === "plural" && f.args.length !== 2) {
-        messages.push({
-          code: "bad-args",
-          message: `Filter "plural" requires exactly 2 args: singular, plural`,
-          data: { filter: f.name, got: f.args.length }
-        });
-      }
-      if (f.name === "currency" && f.args.length < 1) {
-        messages.push({
-          code: "bad-args",
-          message: `Filter "currency" requires at least 1 arg: currency code (e.g., EUR)`,
-          data: { filter: f.name, got: f.args.length }
-        });
-      }
-    }
-  }
-  return { messages };
-}
-
 // src/api.ts
+var DEFAULT_CACHE_SIZE = 200;
+var compiledCache = new LRU(DEFAULT_CACHE_SIZE);
+function makeCacheKey(source, options) {
+  const opt = {
+    locale: options.locale ?? null,
+    onMissing: options.onMissing ?? "keep",
+    // include the filter names only (implementations come from user each call;
+    // we assume same names = same behavior for caching purposes)
+    filters: options.filters ? Object.keys(options.filters).sort() : []
+    // cacheSize is not part of cache identity
+  };
+  return JSON.stringify([source, opt]);
+}
 function template(source, options = {}) {
+  const cacheSize = options.cacheSize ?? DEFAULT_CACHE_SIZE;
+  if (cacheSize !== compiledCache["max"]) {
+    compiledCache.max = cacheSize;
+    if (cacheSize === 0) compiledCache.clear();
+  }
+  if (cacheSize > 0) {
+    const key = makeCacheKey(source, options);
+    const cached = compiledCache.get(key);
+    if (cached) return cached;
+    const ast2 = parseTemplate(source);
+    const fn = compile(ast2, options);
+    compiledCache.set(key, fn);
+    return fn;
+  }
   const ast = parseTemplate(source);
   return compile(ast, options);
 }
 export {
   FormatrError,
-  analyze,
   template
 };
