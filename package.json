@@ -1,8 +1,13 @@
 {
-  "name": "ts-lib-template",
-  "version": "1.0.0",
+  "name": "formatr",
+  "version": "0.2.3",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --dts --format cjs,esm",
     "test": "vitest run",
@@ -15,7 +20,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "packageManager": "pnpm@10.18.2",
   "devDependencies": {
     "@types/node": "^24.7.1",
@@ -29,5 +34,7 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
-  }
+  },
+  "repository": "github:TimurManjosov/formatr",
+  "sideEffects": false
 }
