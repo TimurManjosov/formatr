@@ -74,3 +74,6 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
 
   return { messages };
 }
+
+// add default export for compatibility with default imports
+export default analyze;

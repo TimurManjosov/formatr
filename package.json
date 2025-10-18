@@ -9,7 +9,8 @@
     "dev": "vitest",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
-    "check": "pnpm lint && pnpm test && pnpm build"
+    "check": "pnpm lint && pnpm test && pnpm build",
+    "bench": "tsx bench/render.bench.ts"
   },
   "keywords": [],
   "author": "",
@@ -24,6 +25,7 @@
     "eslint-plugin-import": "^2.32.0",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }
