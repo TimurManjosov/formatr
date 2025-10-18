@@ -116,6 +116,16 @@ var FormatrError = class extends Error {
 };
 
 // src/core/compile.ts
+function getPathValue(obj, path) {
+  let cur = obj;
+  for (const seg of path) {
+    if (cur == null || typeof cur !== "object" && typeof cur !== "function") {
+      return { found: false };
+    }
+    cur = cur[seg];
+  }
+  return cur === void 0 ? { found: false } : { found: true, value: cur };
+}
 function compile(ast, options = {}) {
   const onMissing = options.onMissing ?? "keep";
   const registry = {
@@ -125,7 +135,7 @@ function compile(ast, options = {}) {
   };
   const parts = ast.nodes.map((n) => {
     if (n.kind === "Text") return { type: "text", value: n.value };
-    return n.filters && n.filters.length ? { type: "ph", key: n.key, filters: n.filters } : { type: "ph", key: n.key };
+    return n.filters && n.filters.length ? { type: "ph", path: n.path, filters: n.filters } : { type: "ph", path: n.path };
   });
   return function render(ctx) {
     let out = "";
@@ -134,16 +144,18 @@ function compile(ast, options = {}) {
         out += p.value;
         continue;
       }
-      let val = ctx[p.key];
-      if (val === void 0 || val === null) {
-        if (onMissing === "error") throw new FormatrError(`Missing key "${p.key}"`);
+      const { found, value } = getPathValue(ctx, p.path);
+      if (!found || value == null) {
+        const keyStr = p.path.join(".");
+        if (onMissing === "error") throw new FormatrError(`Missing key "${keyStr}"`);
         if (onMissing === "keep") {
-          out += `{${p.key}}`;
+          out += `{${keyStr}}`;
           continue;
         }
-        out += onMissing(p.key);
+        out += onMissing(keyStr);
         continue;
       }
+      let val = value;
       if (p.filters && p.filters.length) {
         for (const f of p.filters) {
           const fn = registry[f.name];
@@ -160,6 +172,26 @@ function compile(ast, options = {}) {
 // src/core/parser.ts
 var ID_START = /[A-Za-z_]/;
 var ID_CONT = /[A-Za-z0-9_]/;
+function readIdentifier(source, iRef) {
+  const { i } = iRef;
+  if (!ID_START.test(source.charAt(i))) {
+    throw new FormatrError(`Expected identifier`, i);
+  }
+  let j = i + 1;
+  while (j < source.length && ID_CONT.test(source.charAt(j))) j++;
+  const id = source.slice(i, j);
+  iRef.i = j;
+  return id;
+}
+function readPath(source, iRef) {
+  const segs = [];
+  segs.push(readIdentifier(source, iRef));
+  while (source[iRef.i] === ".") {
+    iRef.i++;
+    segs.push(readIdentifier(source, iRef));
+  }
+  return segs;
+}
 function parseTemplate(source) {
   const nodes = [];
   let i = 0;
@@ -167,39 +199,30 @@ function parseTemplate(source) {
   const pushTextIfAny = (end) => {
     if (end > textStart) nodes.push({ kind: "Text", value: source.slice(textStart, end) });
   };
-  const readIdentifier = () => {
-    if (!ID_START.test(source.charAt(i))) {
-      throw new FormatrError(`Expected identifier`, i);
-    }
-    const start = i++;
-    while (i < source.length && ID_CONT.test(source.charAt(i))) i++;
-    return source.slice(start, i);
-  };
-  const readFilterArgs = () => {
+  const readFilterArgs = (iRef) => {
     const args = [];
-    if (source[i] === ":") {
-      i++;
-      let argStart = i;
-      while (i < source.length && source[i] !== "}") {
-        if (source[i] === ",") {
-          args.push(source.slice(argStart, i).trim());
-          i++;
-          argStart = i;
+    if (source[iRef.i] === ":") {
+      iRef.i++;
+      let argStart = iRef.i;
+      while (iRef.i < source.length && source[iRef.i] !== "}") {
+        if (source[iRef.i] === ",") {
+          args.push(source.slice(argStart, iRef.i).trim());
+          iRef.i++;
+          argStart = iRef.i;
           continue;
         }
-        i++;
+        iRef.i++;
       }
-      args.push(source.slice(argStart, i).trim());
+      args.push(source.slice(argStart, iRef.i).trim());
     }
     return args;
   };
-  const readFilters = () => {
+  const readFilters = (iRef) => {
     const filters = [];
-    while (source[i] === "|") {
-      i++;
-      const name = readIdentifier();
-      const posBeforeArgs = i;
-      const args = readFilterArgs();
+    while (source[iRef.i] === "|") {
+      iRef.i++;
+      const name = readIdentifier(source, iRef);
+      const args = readFilterArgs(iRef);
       filters.push({ name, args });
     }
     return filters;
@@ -216,13 +239,16 @@ function parseTemplate(source) {
       }
       pushTextIfAny(i);
       i++;
-      const key = readIdentifier();
-      const filters = readFilters();
-      if (source[i] !== "}") {
-        throw new FormatrError(`Expected '}' to close placeholder for "${key}"`, i);
+      const iRef = { i };
+      const path = readPath(source, iRef);
+      const filters = readFilters(iRef);
+      if (source[iRef.i] !== "}") {
+        throw new FormatrError(`Expected '}' to close placeholder for "${path.join(".")}"`, iRef.i);
       }
-      i++;
-      nodes.push(filters.length ? { kind: "Placeholder", key, filters } : { kind: "Placeholder", key });
+      i = iRef.i + 1;
+      nodes.push(
+        filters.length ? { kind: "Placeholder", path, filters } : { kind: "Placeholder", path }
+      );
       textStart = i;
       continue;
     }
@@ -242,12 +268,7 @@ function parseTemplate(source) {
 // src/core/analyze.ts
 function analyze(source, options = {}) {
   const messages = [];
-  let ast;
-  try {
-    ast = parseTemplate(source);
-  } catch (e) {
-    return { messages };
-  }
+  const ast = parseTemplate(source);
   const registry = {
     ...builtinFilters,
     ...makeIntlFilters(options.locale),
