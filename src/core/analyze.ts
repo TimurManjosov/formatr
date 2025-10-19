@@ -1,31 +1,54 @@
 import type { Filter } from '../filters';
 import { builtinFilters, makeIntlFilters } from '../filters';
 import type { TemplateAST } from './ast';
+import { FormatrError } from './errors';
 import { parseTemplate } from './parser';
+import { buildLineStarts, indexToLineCol } from './position';
 
-export type DiagnosticCode = 'unknown-filter' | 'bad-args';
-
+export type DiagnosticCode = 'unknown-filter' | 'bad-args' | 'parse-error';
 export interface Diagnostic {
   code: DiagnosticCode;
   message: string;
-  // future: line/col; for now just index placeholder
   pos?: number;
-  // optional extra context
+  line?: number;
+  column?: number;
   data?: Record<string, unknown>;
 }
-
 export interface AnalyzeOptions {
   locale?: string;
-  filters?: Record<string, Filter>; // user-supplied
+  filters?: Record<string, Filter>;
 }
-
 export interface AnalysisReport {
   messages: Diagnostic[];
 }
 
 export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisReport {
   const messages: Diagnostic[] = [];
-  const ast: TemplateAST = parseTemplate(source);
+  const lineStarts = buildLineStarts(source);
+
+  let ast: TemplateAST;
+  try {
+    ast = parseTemplate(source);
+  } catch (e: unknown) {
+    if (e instanceof FormatrError) {
+      const pos = e.pos ?? 0;
+      const { line, column } = indexToLineCol(source, pos, lineStarts);
+      messages.push({
+        code: 'parse-error',
+        message: e.message,
+        pos,
+        line,
+        column,
+      });
+      return { messages };
+    }
+    // unknown error: surface generic parse-error without pos
+    messages.push({
+      code: 'parse-error',
+      message: (e as Error)?.message ?? String(e),
+    });
+    return { messages };
+  }
 
   const registry: Record<string, Filter> = {
     ...builtinFilters,
@@ -46,9 +69,6 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
         });
         continue;
       }
-
-      // Basic arg checks for known built-ins we care about now:
-      // plural must have exactly 2 args
       if (f.name === 'plural' && f.args.length !== 2) {
         messages.push({
           code: 'bad-args',
@@ -56,8 +76,6 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
           data: { filter: f.name, got: f.args.length },
         });
       }
-
-      // currency must have at least 1 arg (code)
       if (f.name === 'currency' && f.args.length < 1) {
         messages.push({
           code: 'bad-args',
@@ -65,10 +83,6 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
           data: { filter: f.name, got: f.args.length },
         });
       }
-
-      // percent optional 1 arg (digits) → no strict check
-      // number optional 0–2 args → no strict check
-      // date optional 0–1 arg → no strict check
     }
   }
 
