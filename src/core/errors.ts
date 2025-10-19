@@ -1,6 +1,6 @@
 export class FormatrError extends Error {
   constructor(
-    message: string,
+    message?: string,
     public readonly pos?: number // future: line/col mapping
   ) {
     super(message);
