@@ -5,8 +5,8 @@
 A tiny, type‑safe templating engine that combines placeholders, filters, internationalization (i18n), and dot‑path support into a single, familiar syntax. `formatr` lets you compose strings declaratively while catching errors at compile time.
 
 <!-- Badges: update the links if necessary -->
-[![npm](https://img.shields.io/npm/v/formatr.svg)](https://www.npmjs.com/package/formatr)
-[![license](https://img.shields.io/github/license/yourname/formatr.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@timur_manjosov/formatr.svg)](https://www.npmjs.com/package/@timur_manjosov/formatr)
+[![license](https://img.shields.io/github/license/TimurManjosov/formatr.svg)](LICENSE)
 
 ### 💡 Why formatr?
 
@@ -161,8 +161,7 @@ These diagnostics can be integrated into editors or build pipelines for a smooth
 ## 📦 Installation
 Add formatr to your project using any package manager:
 ```bash
-pnpm add formatr
-# or npm i formatr
+npm i @timur_manjosov/formatr
 ```
 ## 📝 License
 ```formatr``` is open source software under the MIT license. Contributions are welcome!
