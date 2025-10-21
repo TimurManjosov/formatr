@@ -14,9 +14,10 @@ export interface CompileOptions {
   cacheSize?: number; // default 200 (0 disables)
 }
 
+type ResolvedFilter = { fn: Filter; args: string[] };
 type Part =
   | { type: 'text'; value: string }
-  | { type: 'ph'; path: string[]; filters?: { name: string; args: string[] }[] };
+  | { type: 'ph'; path: string[]; filters?: ResolvedFilter[] };
 
 // NEW: safe traversal with early exit
 function getPathValue(obj: unknown, path: string[]): { found: boolean; value?: unknown } {
@@ -39,11 +40,19 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
     ...(options.filters ?? {}),
   };
 
+  // Pre-resolve filters per placeholder at compile time
   const parts: Part[] = ast.nodes.map((n) => {
     if (n.kind === 'Text') return { type: 'text', value: n.value };
-    // Only include `filters` when it's present (and non-empty)
-    return n.filters && n.filters.length
-      ? { type: 'ph', path: n.path, filters: n.filters }
+    let resolved: ResolvedFilter[] | undefined;
+    if (n.filters && n.filters.length) {
+      resolved = n.filters.map((f) => {
+        const fn = registry[f.name];
+        if (!fn) throw new FormatrError(`Unknown filter "${f.name}"`);
+        return { fn, args: f.args ?? [] };
+      });
+    }
+    return resolved && resolved.length
+      ? { type: 'ph', path: n.path, filters: resolved }
       : { type: 'ph', path: n.path };
   });
 
@@ -68,15 +77,11 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
       }
 
       let val: unknown = value;
-
       if (p.filters && p.filters.length) {
-        for (const f of p.filters) {
-          const fn = registry[f.name];
-          if (!fn) throw new FormatrError(`Unknown filter "${f.name}"`);
-          val = fn(val, ...(f.args ?? []));
+        for (const rf of p.filters) {
+          val = rf.fn(val, ...rf.args);
         }
       }
-
       out += String(val);
     }
     return out;
