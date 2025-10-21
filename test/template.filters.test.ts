@@ -19,8 +19,7 @@ describe('formatr: filters', () => {
   });
 
   it('throws for unknown filters', () => {
-    const t = template('Hi {x|doesnotexist}');
-    expect(() => t({ x: 'A' })).toThrow(/Unknown filter "doesnotexist"/);
+    expect(() => template('Hi {x|doesnotexist}')).toThrow(/Unknown filter "doesnotexist"/);
   });
 
   it('keeps missing key behavior even with filters', () => {
