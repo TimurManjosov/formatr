@@ -1,3 +1,5 @@
+// src/core/analyze.ts
+
 import type { Filter } from '../filters';
 import { builtinFilters, makeIntlFilters } from '../filters';
 import type { TemplateAST } from './ast';
@@ -5,7 +7,8 @@ import { FormatrError } from './errors';
 import { parseTemplate } from './parser';
 import { buildLineStarts, indexToLineCol } from './position';
 
-export type DiagnosticCode = 'unknown-filter' | 'bad-args' | 'parse-error';
+export type DiagnosticCode = 'parse-error' | 'unknown-filter' | 'bad-args';
+
 export interface Diagnostic {
   code: DiagnosticCode;
   message: string;
@@ -14,12 +17,19 @@ export interface Diagnostic {
   column?: number;
   data?: Record<string, unknown>;
 }
+
 export interface AnalyzeOptions {
   locale?: string;
   filters?: Record<string, Filter>;
 }
+
 export interface AnalysisReport {
   messages: Diagnostic[];
+}
+
+function atPos(source: string, pos: number, lineStarts: number[]) {
+  const { line, column } = indexToLineCol(source, pos, lineStarts);
+  return { pos, line, column };
 }
 
 export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisReport {
@@ -32,17 +42,13 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
   } catch (e: unknown) {
     if (e instanceof FormatrError) {
       const pos = e.pos ?? 0;
-      const { line, column } = indexToLineCol(source, pos, lineStarts);
       messages.push({
         code: 'parse-error',
         message: e.message,
-        pos,
-        line,
-        column,
+        ...atPos(source, pos, lineStarts),
       });
       return { messages };
     }
-    // unknown error: surface generic parse-error without pos
     messages.push({
       code: 'parse-error',
       message: (e as Error)?.message ?? String(e),
@@ -65,14 +71,18 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
         messages.push({
           code: 'unknown-filter',
           message: `Unknown filter "${f.name}"`,
+          ...atPos(source, f.range.start, lineStarts),
           data: { filter: f.name },
         });
         continue;
       }
+
+      // arg arity checks for known built-ins (extend as you add more rules)
       if (f.name === 'plural' && f.args.length !== 2) {
         messages.push({
           code: 'bad-args',
           message: `Filter "plural" requires exactly 2 args: singular, plural`,
+          ...atPos(source, f.range.start, lineStarts),
           data: { filter: f.name, got: f.args.length },
         });
       }
@@ -80,6 +90,7 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
         messages.push({
           code: 'bad-args',
           message: `Filter "currency" requires at least 1 arg: currency code (e.g., EUR)`,
+          ...atPos(source, f.range.start, lineStarts),
           data: { filter: f.name, got: f.args.length },
         });
       }

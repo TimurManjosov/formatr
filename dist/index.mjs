@@ -166,7 +166,15 @@ function compile(ast, options = {}) {
   };
   const parts = ast.nodes.map((n) => {
     if (n.kind === "Text") return { type: "text", value: n.value };
-    return n.filters && n.filters.length ? { type: "ph", path: n.path, filters: n.filters } : { type: "ph", path: n.path };
+    let resolved;
+    if (n.filters && n.filters.length) {
+      resolved = n.filters.map((f) => {
+        const fn = registry[f.name];
+        if (!fn) throw new FormatrError(`Unknown filter "${f.name}"`);
+        return { fn, args: f.args ?? [] };
+      });
+    }
+    return resolved && resolved.length ? { type: "ph", path: n.path, filters: resolved } : { type: "ph", path: n.path };
   });
   return function render(ctx) {
     let out = "";
@@ -188,10 +196,8 @@ function compile(ast, options = {}) {
       }
       let val = value;
       if (p.filters && p.filters.length) {
-        for (const f of p.filters) {
-          const fn = registry[f.name];
-          if (!fn) throw new FormatrError(`Unknown filter "${f.name}"`);
-          val = fn(val, ...f.args ?? []);
+        for (const rf of p.filters) {
+          val = rf.fn(val, ...rf.args);
         }
       }
       out += String(val);
@@ -203,14 +209,18 @@ function compile(ast, options = {}) {
 // src/core/parser.ts
 var ID_START = /[A-Za-z_]/;
 var ID_CONT = /[A-Za-z0-9_]/;
+function makeRange(start, end) {
+  return { start, end };
+}
 function readIdentifier(source, iRef) {
-  const { i } = iRef;
-  if (!ID_START.test(source.charAt(i))) {
-    throw new FormatrError(`Expected identifier`, i);
+  const i0 = iRef.i;
+  const c0 = source[iRef.i] ?? "";
+  if (!ID_START.test(c0)) {
+    throw new FormatrError(`Expected identifier`, iRef.i);
   }
-  let j = i + 1;
-  while (j < source.length && ID_CONT.test(source.charAt(j))) j++;
-  const id = source.slice(i, j);
+  let j = iRef.i + 1;
+  while (j < source.length && ID_CONT.test(source[j] ?? "")) j++;
+  const id = source.slice(iRef.i, j);
   iRef.i = j;
   return id;
 }
@@ -223,69 +233,81 @@ function readPath(source, iRef) {
   }
   return segs;
 }
+function readFilterArgs(source, iRef) {
+  const args = [];
+  if (source[iRef.i] === ":") {
+    iRef.i++;
+    let argStart = iRef.i;
+    while (iRef.i < source.length && source[iRef.i] !== "}") {
+      if (source[iRef.i] === ",") {
+        args.push(source.slice(argStart, iRef.i).trim());
+        iRef.i++;
+        argStart = iRef.i;
+        continue;
+      }
+      iRef.i++;
+    }
+    args.push(source.slice(argStart, iRef.i).trim());
+  }
+  return args;
+}
+function readFilters(source, iRef) {
+  const filters = [];
+  while (source[iRef.i] === "|") {
+    const fStart = iRef.i;
+    iRef.i++;
+    const name = readIdentifier(source, iRef);
+    const beforeArgs = iRef.i;
+    const args = readFilterArgs(source, iRef);
+    const fEnd = iRef.i;
+    filters.push({ name, args, range: makeRange(fStart, fEnd) });
+  }
+  return filters;
+}
 function parseTemplate(source) {
   const nodes = [];
   let i = 0;
   let textStart = 0;
   const pushTextIfAny = (end) => {
-    if (end > textStart) nodes.push({ kind: "Text", value: source.slice(textStart, end) });
-  };
-  const readFilterArgs = (iRef) => {
-    const args = [];
-    if (source[iRef.i] === ":") {
-      iRef.i++;
-      let argStart = iRef.i;
-      while (iRef.i < source.length && source[iRef.i] !== "}") {
-        if (source[iRef.i] === ",") {
-          args.push(source.slice(argStart, iRef.i).trim());
-          iRef.i++;
-          argStart = iRef.i;
-          continue;
-        }
-        iRef.i++;
-      }
-      args.push(source.slice(argStart, iRef.i).trim());
+    if (end > textStart) {
+      nodes.push({
+        kind: "Text",
+        value: source.slice(textStart, end),
+        range: makeRange(textStart, end)
+      });
     }
-    return args;
-  };
-  const readFilters = (iRef) => {
-    const filters = [];
-    while (source[iRef.i] === "|") {
-      iRef.i++;
-      const name = readIdentifier(source, iRef);
-      const args = readFilterArgs(iRef);
-      filters.push({ name, args });
-    }
-    return filters;
   };
   while (i < source.length) {
     const ch = source[i];
     if (ch === "{") {
       if (source[i + 1] === "{") {
         pushTextIfAny(i);
-        nodes.push({ kind: "Text", value: "{" });
+        nodes.push({ kind: "Text", value: "{", range: makeRange(i, i + 2) });
         i += 2;
         textStart = i;
         continue;
       }
       pushTextIfAny(i);
+      const phStart = i;
       i++;
       const iRef = { i };
       const path = readPath(source, iRef);
-      const filters = readFilters(iRef);
+      const filters = readFilters(source, iRef);
       if (source[iRef.i] !== "}") {
-        throw new FormatrError(`Expected '}' to close placeholder for "${path.join(".")}"`, iRef.i);
+        const keyStr = path.join(".");
+        throw new FormatrError(`Expected '}' to close placeholder for "${keyStr}"`, iRef.i);
       }
       i = iRef.i + 1;
+      const phEnd = i;
       nodes.push(
-        filters.length ? { kind: "Placeholder", path, filters } : { kind: "Placeholder", path }
+        filters.length ? { kind: "Placeholder", path, filters, range: makeRange(phStart, phEnd) } : { kind: "Placeholder", path, range: makeRange(phStart, phEnd) }
       );
       textStart = i;
       continue;
     }
     if (ch === "}" && source[i + 1] === "}") {
       pushTextIfAny(i);
-      nodes.push({ kind: "Text", value: "}" });
+      nodes.push({ kind: "Text", value: "}", range: makeRange(i, i + 2) });
       i += 2;
       textStart = i;
       continue;
