@@ -13,7 +13,7 @@ declare function template<T extends Ctx = Ctx>(source: string, options?: Compile
 
 declare class FormatrError extends Error {
     readonly pos?: number | undefined;
-    constructor(message: string, pos?: number | undefined);
+    constructor(message?: string, pos?: number | undefined);
 }
 
 export { FormatrError, template };
