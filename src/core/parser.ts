@@ -11,8 +11,6 @@ function makeRange(start: number, end: number): Range {
 }
 
 function readIdentifier(source: string, iRef: { i: number }): string {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const i0 = iRef.i;
   const c0 = source[iRef.i] ?? '';
   if (!ID_START.test(c0)) {
     throw new FormatrError(`Expected identifier`, iRef.i);
@@ -67,8 +65,6 @@ function readFilters(source: string, iRef: { i: number }): FilterCall[] {
     const fStart = iRef.i; // range starts at '|'
     iRef.i++; // skip '|'
     const name = readIdentifier(source, iRef);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const beforeArgs = iRef.i;
     const args = readFilterArgs(source, iRef);
     const fEnd = iRef.i; // end right before '}' or next token
     filters.push({ name, args, range: makeRange(fStart, fEnd) });
