@@ -1,170 +1,482 @@
-# formatr
+<div align="center">
 
-> **Elegant, typed string formatting for TypeScript**
+# 📝 formatr
+
+**Elegant, typed string formatting for TypeScript**
 
 A tiny, type‑safe templating engine that combines placeholders, filters, internationalization (i18n), and dot‑path support into a single, familiar syntax. `formatr` lets you compose strings declaratively while catching errors at compile time.
 
-<!-- Badges: update the links if necessary -->
-[![npm](https://img.shields.io/npm/v/@timur_manjosov/formatr.svg)](https://www.npmjs.com/package/@timur_manjosov/formatr)
-[![license](https://img.shields.io/github/license/TimurManjosov/formatr.svg)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/@timur_manjosov/formatr.svg?style=flat-square)](https://www.npmjs.com/package/@timur_manjosov/formatr)
+[![npm downloads](https://img.shields.io/npm/dm/@timur_manjosov/formatr.svg?style=flat-square)](https://www.npmjs.com/package/@timur_manjosov/formatr)
+[![license](https://img.shields.io/github/license/TimurManjosov/formatr.svg?style=flat-square)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 
-### 💡 Why formatr?
+[Features](#-features) • [Installation](#-installation) • [Quickstart](#-quickstart) • [API](#-api) • [Contributing](#-contributing)
 
-- **Type safety** – templates know the shape of your context, so missing keys are compile‑time errors.
-- **Readable templates** – use `{placeholder|filter:args}` syntax instead of awkward string concatenation.
-- **First‑class i18n** – built‑in filters for numbers, currency, percentages, and dates via `Intl`.
-- **Extensible** – write your own filters and plug them in with a single option.
-- **Zero runtime deps** – no dependencies outside the TypeScript standard library.
+</div>
 
 ---
 
-## Table of Contents
+## 💡 Why formatr?
 
-1. [Features](#✨-features)
-2. [Quickstart](#🚀-quickstart)
-3. [API](#📘-api)
-4. [Built‑in Filters](#🧰-built‑in-filters)
-5. [Custom Filters](#🧱-custom-filters)
-6. [Dot‑Paths](#🧭-dot‑paths)
-7. [Diagnostics](#🔍-diagnostics)
-8. [Installation](#📦-installation)
-9. [License](#📝-license)
+`formatr` bridges the gap between simple string interpolation and complex templating engines. It provides a lightweight, type-safe solution for formatting strings with sophisticated features like filters, i18n support, and nested object access—all while maintaining excellent TypeScript integration.
+
+**Key Benefits:**
+
+- 🔒 **Type Safety** – Templates are aware of your context shape, catching missing keys at compile time
+- 📖 **Readable Templates** – Clean `{placeholder|filter:args}` syntax instead of complex string concatenation
+- 🌐 **First-Class i18n** – Built-in filters for numbers, currency, percentages, and dates using the `Intl` API
+- 🔧 **Extensible** – Easily write custom filters and integrate them seamlessly
+- ⚡ **Zero Runtime Dependencies** – No external dependencies beyond TypeScript standard library
+- 🚀 **High Performance** – Internal caching ensures fast repeated renders
+
+---
+
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Installation](#-installation)
+- [Quickstart](#-quickstart)
+- [API](#-api)
+  - [Options](#options)
+- [Built-in Filters](#-built-in-filters)
+- [Custom Filters](#-custom-filters)
+- [Dot-Paths](#-dot-paths)
+- [Diagnostics](#-diagnostics)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ## ✨ Features
 
-- 🔒 **Typed templates** – type‑safe placeholders tied to your context.
-- 🔗 **Chainable filters** – transform values inline with `|trim|upper`.
-- 🌐 **i18n support** – format numbers, dates, and currencies effortlessly via `Intl`.
-- 🗺 **Dot‑paths** – safely traverse nested objects (`{user.address.city}`).
-- 🧩 **Customizable** – define your own filters and reuse them across templates.
-- 🛠 **Diagnostics** – detect typos, unknown filters, and argument mismatches at authoring time.
-- ⚡ **Performance** – internal caching ensures repeated renders are lightning‑fast.
+- 🔒 **Typed Templates** – Type-safe placeholders tied to your context for compile-time error detection
+- 🔗 **Chainable Filters** – Transform values inline with composable filters like `|trim|upper`
+- 🌐 **Internationalization** – Format numbers, dates, and currencies effortlessly using `Intl` API
+- 🗺️ **Dot-Path Navigation** – Safely traverse nested objects with `{user.address.city}` syntax
+- 🧩 **Highly Customizable** – Define custom filters and reuse them across all templates
+- 🛠️ **Smart Diagnostics** – Detect typos, unknown filters, and argument mismatches during development
+- ⚡ **Optimized Performance** – Internal caching ensures repeated renders are lightning-fast
+- 📦 **Tiny Bundle Size** – Minimal footprint with no external runtime dependencies
+
+---
+
+## 📦 Installation
+
+Install `formatr` using your preferred package manager:
+
+```bash
+# npm
+npm install @timur_manjosov/formatr
+
+# pnpm
+pnpm add @timur_manjosov/formatr
+
+# yarn
+yarn add @timur_manjosov/formatr
+```
 
 ---
 
 ## 🚀 Quickstart
 
-Use `formatr` in three quick steps:
+Get started with `formatr` in three simple steps:
 
-1. **Import** the `template` function.
-2. **Define** your context type and template string.
-3. **Render** the template with data.
+### 1️⃣ Import the `template` function
 
-```ts
-import { template } from "formatr";
+```typescript
+import { template } from "@timur_manjosov/formatr";
+```
 
+### 2️⃣ Define your template with type safety
+
+```typescript
 const greet = template<{ name: string; count: number }>(
   "Hello {name|upper}, you have {count|plural:message,messages}",
   { locale: "en" }
 );
-
-// Execute the compiled template with your data
-console.log(greet({ name: "Lara", count: 2 }));
-// → "Hello LARA, you have messages"
 ```
-In this example:
 
-- {name} is piped through the upper filter to uppercase the value.
+### 3️⃣ Render with your data
 
-- {count} uses the plural filter to choose between “message” and “messages” based on its numeric value.
+```typescript
+console.log(greet({ name: "Lara", count: 1 }));
+// → "Hello LARA, you have message"
 
-- The optional locale determines how numeric and date filters behave.
+console.log(greet({ name: "Alex", count: 5 }));
+// → "Hello ALEX, you have messages"
+```
+
+**What's happening here?**
+
+- `{name|upper}` – The `name` value is piped through the `upper` filter to convert it to uppercase
+- `{count|plural:message,messages}` – The `plural` filter selects the appropriate form based on the count value
+- `locale: "en"` – Optional locale setting that affects how numeric and date filters format values
+
+### More Examples
+
+**Currency Formatting:**
+
+```typescript
+const price = template<{ amount: number }>(
+  "Total: {amount|currency:USD}",
+  { locale: "en-US" }
+);
+
+console.log(price({ amount: 42.99 }));
+// → "Total: $42.99"
+```
+
+**Nested Object Access:**
+
+```typescript
+const userInfo = template<{ user: { profile: { name: string } } }>(
+  "Welcome, {user.profile.name|upper}!"
+);
+
+console.log(userInfo({ user: { profile: { name: "Alice" } } }));
+// → "Welcome, ALICE!"
+```
+
+**Chaining Multiple Filters:**
+
+```typescript
+const format = template<{ text: string }>(
+  "Result: {text|trim|lower|upper}"
+);
+
+console.log(format({ text: "  Hello World  " }));
+// → "Result: HELLO WORLD"
+```
+
+---
 
 ## 📘 API
-```ts
-template(source, options?): (context) => string
-```
 
-Compile a template into a function that accepts a context object and returns the formatted string.
+### `template(source, options?): (context) => string`
 
-### Options:
+Compiles a template string into a reusable function that accepts a context object and returns a formatted string.
 
-- ```locale?: string``` – override the default locale for Intl‑based filters.
+**Parameters:**
 
-- onMissing?: "error" | "keep" | (key => string) – control how missing placeholders are handled:
+- `source` (string) – The template string containing placeholders and filters
+- `options` (object, optional) – Configuration options for the template
 
-- - ```"error"``` throws an exception,
-  - ```"keep"``` leaves the placeholder untouched,
-  - A function returns a fallback string.
+**Returns:** A function that takes a context object and returns the formatted string.
 
-- ```filters?: Record<string, (value, ...args) => unknown>``` – register custom filters.
+#### Options
 
-- ```cacheSize?: number``` (default ```200```) – adjust internal caching; set to ```0``` to disable.
+Configure template behavior with these options:
 
-```analyze(source, options?): { messages: Diagnostic[] }```
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `locale` | `string` | System default | Locale for internationalization filters (e.g., `"en-US"`, `"de-DE"`) |
+| `onMissing` | `"error"` \| `"keep"` \| `function` | `"error"` | Behavior when a placeholder key is missing:<br/>• `"error"` – Throws an exception<br/>• `"keep"` – Leaves the placeholder unchanged<br/>• `function` – Custom function returning a fallback string |
+| `filters` | `Record<string, Function>` | `{}` | Custom filter functions to extend built-in filters |
+| `cacheSize` | `number` | `200` | Maximum number of compiled templates to cache (set to `0` to disable) |
 
-Analyze a template string and return diagnostics about unknown filters, argument mismatches, or other authoring problems. Integrate this into your build or editor for early feedback.
+**Example with Options:**
 
-## 🧰 Built-in filters
-`format` ships with a suite of useful filters that can be chained and combined as needed:
-
-| **Filter** | **Syntax** | **Description** |
-|-------------|-------------|-----------------|
-| `upper`     | `{name upper}` | upper |
-| `lower`     | `{name lower}` | lower |
-| `trim`      | `{name trim}` | trim |
-| `plural`    | `{count plural:singular,plural}` | plural:singular,plural |
-| `number`    | `{n number}` | number |
-| `percent`   | `{n percent}` | percent |
-| `currency`  | `{n currency:EUR}` | currency:EUR |
-| `date`      | `{d date:short}` | date:short |
-
-
-## 🧱Custom Filter
-Filters are just functions. Define your own and pass them via the ```filters``` option:
-```ts
-import { template } from "formatr";
-
-const greet = template("Hi {name|greet:!}", {
-  filters: {
-    greet: (value: unknown, punctuation: string = "!") => {
-      return `👋 ${String(value)}${punctuation}`;
+```typescript
+const t = template<{ name?: string }>(
+  "Hello {name|upper}!",
+  {
+    locale: "en-US",
+    onMissing: (key) => `[Missing: ${key}]`,
+    filters: {
+      greet: (val: unknown) => `👋 ${val}`
     },
-  },
-});
-
-console.log(greet({ name: "Alex" }));
-// → "👋 Alex!"
+    cacheSize: 100
+  }
+);
 ```
-Custom filters receive the placeholder value as their first argument, followed by any additional arguments provided after the colon.
 
-## 🧭 Dot‑Paths
-Access nested properties safely using dot‑path notation. If any segment is ```undefined```, the entire expression resolves to ```undefined``` and can be handled by ```onMissing```:
-```ts
-import { template } from "formatr";
+---
 
-const t = template("City: {user.address.city}");
+### `analyze(source, options?): { messages: Diagnostic[] }`
 
-console.log(t({ user: { address: { city: "Berlin" } } }));
-// → "City: Berlin"
+Analyzes a template string and returns diagnostic information about potential issues, including unknown filters, invalid arguments, and syntax errors. This is useful for editor integrations and build-time validation.
 
-```
-Dot‑paths let you reach into complex objects without boilerplate or optional chaining.
+**Parameters:**
 
-## 🔍 Diagnostics
-Use ```analyze()``` to detect issues early. Diagnostics report unknown filters, invalid arguments, and other authoring problems:
-```ts
-import { analyze } from "formatr";
+- `source` (string) – The template string to analyze
+- `options` (object, optional) – Analysis configuration (same as template options)
 
-const report = analyze("{n|plural:one}");
+**Returns:** An object containing an array of diagnostic messages.
+
+**Example:**
+
+```typescript
+import { analyze } from "@timur_manjosov/formatr";
+
+const report = analyze("{count|plural:singular}");
+
 console.log(report.messages);
 // [
 //   {
 //     code: "bad-args",
 //     message: 'Filter "plural" requires exactly 2 arguments (e.g. one, other)',
-//     range: { /* ... */ },
-//   },
+//     range: { start: {...}, end: {...} }
+//   }
 // ]
 ```
-These diagnostics can be integrated into editors or build pipelines for a smooth developer experience.
 
-## 📦 Installation
-Add formatr to your project using any package manager:
-```bash
-npm i @timur_manjosov/formatr
+Integrate `analyze()` into your editor, linter, or build process for early detection of template issues.
+
+---
+
+## 🧰 Built-in Filters
+
+`formatr` includes a comprehensive set of built-in filters for common string transformations and formatting tasks:
+
+| Filter | Syntax | Description | Example |
+|--------|--------|-------------|---------|
+| `upper` | `{name\|upper}` | Converts text to uppercase | `"hello"` → `"HELLO"` |
+| `lower` | `{name\|lower}` | Converts text to lowercase | `"HELLO"` → `"hello"` |
+| `trim` | `{name\|trim}` | Removes leading and trailing whitespace | `"  hello  "` → `"hello"` |
+| `plural` | `{count\|plural:singular,plural}` | Selects singular or plural form based on count | `1` → `"item"`, `5` → `"items"` |
+| `number` | `{value\|number}` | Formats number using locale settings | `1234.56` → `"1,234.56"` (en-US) |
+| `percent` | `{value\|percent}` | Formats as percentage | `0.42` → `"42%"` |
+| `currency` | `{value\|currency:USD}` | Formats as currency with specified code | `42.99` → `"$42.99"` (en-US) |
+| `date` | `{value\|date:short}` | Formats date with specified style (`short`, `medium`, `long`, `full`) | `new Date()` → `"1/15/2025"` |
+
+### Filter Chaining
+
+Filters can be chained together to apply multiple transformations:
+
+```typescript
+const t = template<{ name: string }>(
+  "{name|trim|lower|upper}"
+);
+
+console.log(t({ name: "  Alice  " }));
+// → "ALICE"
 ```
+
+---
+
+## 🧱 Custom Filters
+
+Extend `formatr` with your own filters by defining functions and passing them via the `filters` option.
+
+### Creating a Custom Filter
+
+Filters are simple functions that receive the placeholder value as the first argument, followed by any additional arguments specified in the template.
+
+```typescript
+import { template } from "@timur_manjosov/formatr";
+
+const greet = template<{ name: string }>(
+  "Hi {name|greet:!}", 
+  {
+    filters: {
+      greet: (value: unknown, punctuation: string = "!") => {
+        return `👋 ${String(value)}${punctuation}`;
+      }
+    }
+  }
+);
+
+console.log(greet({ name: "Alex" }));
+// → "Hi 👋 Alex!"
+```
+
+### Advanced Custom Filter Example
+
+```typescript
+const formatter = template<{ code: string }>(
+  "Code: {code|highlight:javascript}",
+  {
+    filters: {
+      highlight: (value: unknown, language: string) => {
+        // Your custom syntax highlighting logic
+        return `<code class="language-${language}">${value}</code>`;
+      }
+    }
+  }
+);
+```
+
+Custom filters have access to:
+- The placeholder value (first parameter)
+- Any colon-separated arguments (subsequent parameters)
+- The ability to return any value (will be converted to string in the output)
+
+---
+
+## 🧭 Dot-Paths
+
+Access nested object properties safely using dot-path notation. If any segment along the path is `undefined` or `null`, the entire expression resolves gracefully according to your `onMissing` configuration.
+
+### Basic Dot-Path Usage
+
+```typescript
+import { template } from "@timur_manjosov/formatr";
+
+const t = template<{ user: { address: { city: string } } }>(
+  "City: {user.address.city}"
+);
+
+console.log(t({ user: { address: { city: "Berlin" } } }));
+// → "City: Berlin"
+```
+
+### Dot-Paths with Filters
+
+Combine dot-paths with filters for powerful data access and transformation:
+
+```typescript
+const t = template<{ user: { profile: { name: string; title: string } } }>(
+  "Welcome, {user.profile.title} {user.profile.name|upper}!"
+);
+
+console.log(t({
+  user: {
+    profile: {
+      name: "smith",
+      title: "Dr."
+    }
+  }
+}));
+// → "Welcome, Dr. SMITH!"
+```
+
+### Handling Missing Paths
+
+```typescript
+const t = template<{ user?: { name?: string } }>(
+  "Name: {user.name}",
+  { onMissing: () => "[Not provided]" }
+);
+
+console.log(t({}));
+// → "Name: [Not provided]"
+```
+
+Dot-paths eliminate the need for optional chaining in templates while maintaining type safety.
+
+---
+
+## 🔍 Diagnostics
+
+Use the `analyze()` function to detect template issues during development. This helps catch errors early and can be integrated into editors, linters, or CI/CD pipelines.
+
+### Running Diagnostics
+
+```typescript
+import { analyze } from "@timur_manjosov/formatr";
+
+const report = analyze("{count|plural:one}");
+
+console.log(report.messages);
+// [
+//   {
+//     code: "bad-args",
+//     message: 'Filter "plural" requires exactly 2 arguments (e.g. one, other)',
+//     range: { start: { line: 0, column: 7 }, end: { line: 0, column: 19 } }
+//   }
+// ]
+```
+
+### Diagnostic Types
+
+The analyzer can detect:
+
+- **Unknown filters** – References to filters that don't exist
+- **Argument mismatches** – Incorrect number of arguments for built-in filters
+- **Syntax errors** – Malformed template syntax
+- **Type inconsistencies** – When used with TypeScript
+
+### Integration Examples
+
+**Build Script:**
+
+```typescript
+import { analyze } from "@timur_manjosov/formatr";
+
+const templates = [
+  "{user.name|upper}",
+  "{count|plural:item,items}",
+  "{price|currency:USD}"
+];
+
+templates.forEach(tmpl => {
+  const { messages } = analyze(tmpl);
+  if (messages.length > 0) {
+    console.error(`Issues in template "${tmpl}":`, messages);
+    process.exit(1);
+  }
+});
+```
+
+**Editor Integration:**
+
+Diagnostics include position information (line, column) suitable for editor integration, allowing for real-time feedback as developers write templates.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Whether you want to report a bug, suggest a feature, or submit a pull request, your help is appreciated.
+
+### How to Contribute
+
+1. **Fork the repository** – Create your own fork of the project
+2. **Create a feature branch** – `git checkout -b feature/amazing-feature`
+3. **Make your changes** – Implement your feature or fix
+4. **Run tests** – Ensure all tests pass with `pnpm test`
+5. **Commit your changes** – `git commit -m 'Add some amazing feature'`
+6. **Push to your branch** – `git push origin feature/amazing-feature`
+7. **Open a Pull Request** – Submit your changes for review
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/TimurManjosov/formatr.git
+cd formatr
+
+# Install dependencies
+pnpm install
+
+# Run tests
+pnpm test
+
+# Run tests in watch mode
+pnpm dev
+
+# Build the project
+pnpm build
+
+# Lint the code
+pnpm lint
+
+# Format code
+pnpm format
+```
+
+### Guidelines
+
+- Write clear, concise commit messages
+- Add tests for new features
+- Update documentation as needed
+- Follow the existing code style
+- Keep pull requests focused on a single feature or fix
+
+---
+
 ## 📝 License
-```formatr``` is open source software under the MIT license. Contributions are welcome!
 
+`formatr` is open source software licensed under the [MIT License](LICENSE).
 
+Copyright (c) 2025 Timur Manjosov
 
+---
+
+<div align="center">
+
+**[⬆ Back to Top](#-formatr)**
+
+Made with ❤️ by [Timur Manjosov](https://github.com/TimurManjosov)
+
+If you find this project useful, please consider giving it a ⭐ on [GitHub](https://github.com/TimurManjosov/formatr)!
+
+</div>
