@@ -232,11 +232,51 @@ Integrate `analyze()` into your editor, linter, or build process for early detec
 | `upper` | `{name\|upper}` | Converts text to uppercase | `"hello"` → `"HELLO"` |
 | `lower` | `{name\|lower}` | Converts text to lowercase | `"HELLO"` → `"hello"` |
 | `trim` | `{name\|trim}` | Removes leading and trailing whitespace | `"  hello  "` → `"hello"` |
+| `slice` | `{text\|slice:start,end?}` | Extracts a substring (supports negative indices) | `"hello world"\|slice:0,5` → `"hello"` |
+| `pad` | `{text\|pad:length,direction?,char?}` | Pads string to specified length (direction: `left`, `right`, `both`/`center`) | `"hi"\|pad:5` → `"hi   "` |
+| `truncate` | `{text\|truncate:length,ellipsis?}` | Truncates string to max length with ellipsis | `"hello world"\|truncate:8` → `"hello..."` |
+| `replace` | `{text\|replace:from,to}` | Replaces all occurrences of substring | `"user@example"\|replace:@,at` → `"useratexample"` |
 | `plural` | `{count\|plural:singular,plural}` | Selects singular or plural form based on count | `1` → `"item"`, `5` → `"items"` |
 | `number` | `{value\|number}` | Formats number using locale settings | `1234.56` → `"1,234.56"` (en-US) |
 | `percent` | `{value\|percent}` | Formats as percentage | `0.42` → `"42%"` |
 | `currency` | `{value\|currency:USD}` | Formats as currency with specified code | `42.99` → `"$42.99"` (en-US) |
 | `date` | `{value\|date:short}` | Formats date with specified style (`short`, `medium`, `long`, `full`) | `new Date()` → `"1/15/2025"` |
+
+### Text Manipulation Examples
+
+The new text filters provide powerful string manipulation capabilities:
+
+```typescript
+import { template } from "@timur_manjosov/formatr";
+
+// Extract substring with slice
+const extractId = template<{ userId: string }>(
+  "ID: {userId|slice:0,8}"
+);
+console.log(extractId({ userId: "abc123def456ghi789" }));
+// → "ID: abc123de"
+
+// Pad strings for fixed-width output
+const logLine = template<{ level: string; message: string }>(
+  "[{level|pad:5}] {message}"
+);
+console.log(logLine({ level: "INFO", message: "Server started" }));
+// → "[INFO ] Server started"
+
+// Truncate long text with ellipsis
+const preview = template<{ comment: string }>(
+  "Comment: {comment|truncate:50,...}"
+);
+console.log(preview({ comment: "This is a very long comment that needs to be truncated for display" }));
+// → "Comment: This is a very long comment that needs to be tr..."
+
+// Replace substrings
+const sanitize = template<{ text: string }>(
+  "{text|replace:@,at}"
+);
+console.log(sanitize({ text: "user@example.com" }));
+// → "useratexample.com"
+```
 
 ### Filter Chaining
 
