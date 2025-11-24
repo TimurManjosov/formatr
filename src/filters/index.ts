@@ -1,5 +1,5 @@
 import type { Filter } from './text';
-import { lower, plural, trim, upper } from './text';
+import { lower, pad, plural, replace, slice, trim, truncate, upper } from './text';
 export { makeIntlFilters } from './intl';
 export type { Filter } from './text';
 
@@ -8,4 +8,8 @@ export const builtinFilters: Record<string, Filter> = {
   lower,
   trim,
   plural,
+  slice,
+  pad,
+  truncate,
+  replace,
 };

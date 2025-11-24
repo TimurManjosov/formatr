@@ -68,6 +68,40 @@ var plural = (v, singular, plural2) => {
   }
   return n === 1 ? singular : plural2;
 };
+var slice = (v, start, end) => {
+  const str = String(v);
+  const startIdx = start != null ? parseInt(start, 10) : 0;
+  const endIdx = end != null ? parseInt(end, 10) : void 0;
+  return str.slice(startIdx, endIdx);
+};
+var pad = (v, length, direction = "right", char = " ") => {
+  const str = String(v);
+  const len = length != null ? parseInt(length, 10) : 0;
+  if (isNaN(len) || str.length >= len) return str;
+  const padChar = char.charAt(0) || " ";
+  const padSize = len - str.length;
+  if (direction === "left") {
+    return padChar.repeat(padSize) + str;
+  } else if (direction === "both" || direction === "center") {
+    const leftPad = Math.floor(padSize / 2);
+    const rightPad = padSize - leftPad;
+    return padChar.repeat(leftPad) + str + padChar.repeat(rightPad);
+  } else {
+    return str + padChar.repeat(padSize);
+  }
+};
+var truncate = (v, length, ellipsis = "...") => {
+  const str = String(v);
+  const maxLen = length != null ? parseInt(length, 10) : str.length;
+  if (isNaN(maxLen) || str.length <= maxLen) return str;
+  const truncatedLength = Math.max(0, maxLen - ellipsis.length);
+  return str.slice(0, truncatedLength) + ellipsis;
+};
+var replace = (v, from, to = "") => {
+  const str = String(v);
+  if (from == null || from === "") return str;
+  return str.split(from).join(to);
+};
 
 // src/filters/intl.ts
 var toNumber = (v) => {
@@ -161,7 +195,11 @@ var builtinFilters = {
   upper,
   lower,
   trim,
-  plural
+  plural,
+  slice,
+  pad,
+  truncate,
+  replace
 };
 
 // src/core/errors.ts
@@ -240,7 +278,6 @@ function makeRange(start, end) {
   return { start, end };
 }
 function readIdentifier(source, iRef) {
-  const i0 = iRef.i;
   const c0 = source[iRef.i] ?? "";
   if (!ID_START.test(c0)) {
     throw new FormatrError(`Expected identifier`, iRef.i);
@@ -265,7 +302,7 @@ function readFilterArgs(source, iRef) {
   if (source[iRef.i] === ":") {
     iRef.i++;
     let argStart = iRef.i;
-    while (iRef.i < source.length && source[iRef.i] !== "}") {
+    while (iRef.i < source.length && source[iRef.i] !== "}" && source[iRef.i] !== "|") {
       if (source[iRef.i] === ",") {
         args.push(source.slice(argStart, iRef.i).trim());
         iRef.i++;
@@ -284,7 +321,6 @@ function readFilters(source, iRef) {
     const fStart = iRef.i;
     iRef.i++;
     const name = readIdentifier(source, iRef);
-    const beforeArgs = iRef.i;
     const args = readFilterArgs(source, iRef);
     const fEnd = iRef.i;
     filters.push({ name, args, range: makeRange(fStart, fEnd) });

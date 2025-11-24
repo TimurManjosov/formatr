@@ -94,6 +94,38 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
           data: { filter: f.name, got: f.args.length },
         });
       }
+      if (f.name === 'slice' && (f.args.length < 1 || f.args.length > 2)) {
+        messages.push({
+          code: 'bad-args',
+          message: `Filter "slice" requires 1 or 2 args: start, end?`,
+          ...atPos(source, f.range.start, lineStarts),
+          data: { filter: f.name, got: f.args.length },
+        });
+      }
+      if (f.name === 'pad' && (f.args.length < 1 || f.args.length > 3)) {
+        messages.push({
+          code: 'bad-args',
+          message: `Filter "pad" requires 1 to 3 args: length, direction?, char?`,
+          ...atPos(source, f.range.start, lineStarts),
+          data: { filter: f.name, got: f.args.length },
+        });
+      }
+      if (f.name === 'truncate' && (f.args.length < 1 || f.args.length > 2)) {
+        messages.push({
+          code: 'bad-args',
+          message: `Filter "truncate" requires 1 or 2 args: length, ellipsis?`,
+          ...atPos(source, f.range.start, lineStarts),
+          data: { filter: f.name, got: f.args.length },
+        });
+      }
+      if (f.name === 'replace' && f.args.length !== 2) {
+        messages.push({
+          code: 'bad-args',
+          message: `Filter "replace" requires exactly 2 args: from, to`,
+          ...atPos(source, f.range.start, lineStarts),
+          data: { filter: f.name, got: f.args.length },
+        });
+      }
     }
   }
 

@@ -36,7 +36,7 @@ function readPath(source: string, iRef: { i: number }): string[] {
 /**
  * Reads optional filter args of the form:
  *   ":" <arg> ("," <arg>)*
- * Arg is a run of characters up to ',' or '}' (no escaping in v0.2.x).
+ * Arg is a run of characters up to ',', '|', or '}' (no escaping in v0.2.x).
  * Leaves iRef.i positioned at the same place as before (either ':' consumed fully or not present).
  */
 function readFilterArgs(source: string, iRef: { i: number }): string[] {
@@ -44,7 +44,7 @@ function readFilterArgs(source: string, iRef: { i: number }): string[] {
   if (source[iRef.i] === ':') {
     iRef.i++; // skip ':'
     let argStart = iRef.i;
-    while (iRef.i < source.length && source[iRef.i] !== '}') {
+    while (iRef.i < source.length && source[iRef.i] !== '}' && source[iRef.i] !== '|') {
       if (source[iRef.i] === ',') {
         args.push(source.slice(argStart, iRef.i).trim());
         iRef.i++; // skip ','
