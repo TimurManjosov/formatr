@@ -1262,7 +1262,7 @@ const message = t({ name, count });
 - You have simple, one-off string interpolation
 - Templates are never reused
 - You don't need advanced formatting features
-- Performance is absolutely critical (though the difference is minimal)
+- You need maximum performance for simple cases (template literals have zero overhead)
 
 ### How do I handle missing or undefined keys?
 
