@@ -17,11 +17,15 @@ jobs:
       - name: Git diagnostics
         run: |
           echo "=== Git diagnostics ==="
+          echo "Checking git version..."
           git --version || true
-          if [ -d .git ]; then 
+          echo "Checking .git directory..."
+          if [ -d .git ]; then
             ls -la .git || true
-          else 
+          else
             echo ".git directory not present"
           fi
+          echo "Checking git status..."
           git status --porcelain || true
+          echo "Checking current branch..."
           git rev-parse --abbrev-ref HEAD || true
