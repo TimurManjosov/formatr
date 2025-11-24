@@ -16,7 +16,6 @@ export type Filter = (value: unknown, ...args: string[]) => unknown;
  * ```typescript
  * upper('hello') // => 'HELLO'
  * upper(42) // => '42'
- * upper(null) // => 'NULL' (when value exists in context)
  * upper([1,2,3]) // => '1,2,3'
  * ```
  */

@@ -490,13 +490,13 @@ console.log(report3.messages[0].message);
 
 ### Handling Null and Undefined
 
-By default, `null` and `undefined` values in the context trigger the `onMissing` behavior. To pass these values through to filters, ensure they are explicitly set in the context:
+**Note:** By default, `null` and `undefined` values in the context trigger the `onMissing` behavior rather than being passed to filters. This is by design to handle missing data gracefully.
 
 ```typescript
-// null/undefined trigger onMissing by default
+// null/undefined trigger onMissing by default (onMissing: "keep")
 const t1 = template('{value|upper}');
 console.log(t1({ value: null }));
-// → "{value}" (with default onMissing: "keep")
+// → "{value}" (placeholder kept as-is)
 
 // With onMissing as a function
 const t2 = template('{value|upper}', {
@@ -504,9 +504,12 @@ const t2 = template('{value|upper}', {
 });
 console.log(t2({ value: null }));
 // → "[missing]"
+
+// Filters only receive non-null values unless explicitly configured otherwise
+// This ensures missing data is handled consistently across your templates
 ```
 
-This behavior ensures that missing data is handled gracefully while still allowing filters to process legitimate falsy values like `0`, `false`, or empty strings.
+To change this behavior and allow filters to process `null` and `undefined` values directly, you would need to customize the `onMissing` handling or ensure values are explicitly set to non-null defaults in your context.
 
 ---
 

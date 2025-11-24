@@ -115,12 +115,12 @@ describe('Plural Filter: Edge Cases', () => {
 
   it('returns string representation for non-numeric strings', () => {
     const t = template('{count|plural:item,items}');
-    expect(t({ count: 'not a number' as any })).toBe('not a number');
+    expect(t({ count: 'not a number' as unknown })).toBe('not a number');
   });
 
   it('returns string representation for objects', () => {
     const t = template('{count|plural:item,items}');
-    expect(t({ count: { obj: true } as any })).toBe('[object Object]');
+    expect(t({ count: { obj: true } as unknown })).toBe('[object Object]');
   });
 
   it('throws error when singular argument is missing', () => {
@@ -165,17 +165,17 @@ describe('Number Filters: Edge Cases', () => {
   describe('number filter', () => {
     it('returns string representation for non-numeric strings', () => {
       const t = template('{value|number}');
-      expect(t({ value: 'not a number' as any })).toBe('not a number');
+      expect(t({ value: 'not a number' as unknown })).toBe('not a number');
     });
 
     it('returns string representation for objects', () => {
       const t = template('{value|number}');
-      expect(t({ value: { obj: true } as any })).toBe('[object Object]');
+      expect(t({ value: { obj: true } as unknown })).toBe('[object Object]');
     });
 
     it('returns string representation for arrays', () => {
       const t = template('{value|number}');
-      expect(t({ value: [1, 2, 3] as any })).toBe('1,2,3');
+      expect(t({ value: [1, 2, 3] as unknown })).toBe('1,2,3');
     });
 
     it('returns string representation for NaN', () => {
@@ -191,7 +191,7 @@ describe('Number Filters: Edge Cases', () => {
 
     it('formats numeric strings correctly', () => {
       const t = template('{value|number}');
-      expect(t({ value: '123' as any })).toMatch(/123/);
+      expect(t({ value: '123' as unknown })).toMatch(/123/);
     });
 
     it('formats zero correctly', () => {
@@ -207,15 +207,15 @@ describe('Number Filters: Edge Cases', () => {
 
     it('handles boolean values', () => {
       const t = template('{value|number}');
-      expect(t({ value: true as any })).toMatch(/1/);
-      expect(t({ value: false as any })).toBe('0');
+      expect(t({ value: true as unknown })).toMatch(/1/);
+      expect(t({ value: false as unknown })).toBe('0');
     });
   });
 
   describe('percent filter', () => {
     it('returns string representation for non-numeric strings', () => {
       const t = template('{value|percent}');
-      expect(t({ value: 'not a number' as any })).toBe('not a number');
+      expect(t({ value: 'not a number' as unknown })).toBe('not a number');
     });
 
     it('returns string representation for NaN', () => {
@@ -241,7 +241,7 @@ describe('Number Filters: Edge Cases', () => {
 
     it('handles numeric strings correctly', () => {
       const t = template('{value|percent}');
-      const result = t({ value: '0.5' as any });
+      const result = t({ value: '0.5' as unknown });
       expect(result).toMatch(/50%/);
     });
   });
@@ -249,7 +249,7 @@ describe('Number Filters: Edge Cases', () => {
   describe('currency filter', () => {
     it('returns string representation for non-numeric strings', () => {
       const t = template('{value|currency:USD}');
-      expect(t({ value: 'not a number' as any })).toBe('not a number');
+      expect(t({ value: 'not a number' as unknown })).toBe('not a number');
     });
 
     it('returns string representation for NaN', () => {
@@ -284,7 +284,7 @@ describe('Number Filters: Edge Cases', () => {
 
     it('handles numeric strings correctly', () => {
       const t = template('{value|currency:USD}');
-      const result = t({ value: '42.50' as any });
+      const result = t({ value: '42.50' as unknown });
       expect(result).toMatch(/42/);
     });
 
@@ -301,7 +301,7 @@ describe('Number Filters: Edge Cases', () => {
 
     it('handles objects gracefully', () => {
       const t = template('{value|currency:USD}');
-      expect(t({ value: { obj: true } as any })).toBe('[object Object]');
+      expect(t({ value: { obj: true } as unknown })).toBe('[object Object]');
     });
   });
 });
@@ -309,7 +309,7 @@ describe('Number Filters: Edge Cases', () => {
 describe('Date Filter: Edge Cases', () => {
   it('returns string representation for non-date strings', () => {
     const t = template('{value|date:short}');
-    expect(t({ value: 'not a date' as any })).toBe('not a date');
+    expect(t({ value: 'not a date' as unknown })).toBe('not a date');
   });
 
   it('returns Invalid Date string for invalid Date objects', () => {
@@ -319,12 +319,12 @@ describe('Date Filter: Edge Cases', () => {
 
   it('returns string representation for NaN', () => {
     const t = template('{value|date:short}');
-    expect(t({ value: NaN as any })).toBe('NaN');
+    expect(t({ value: NaN as unknown })).toBe('NaN');
   });
 
   it('returns string representation for objects', () => {
     const t = template('{value|date:short}');
-    expect(t({ value: { obj: true } as any })).toBe('[object Object]');
+    expect(t({ value: { obj: true } as unknown })).toBe('[object Object]');
   });
 
   it('formats valid Date objects', () => {
@@ -345,7 +345,7 @@ describe('Date Filter: Edge Cases', () => {
 
   it('formats ISO date strings', () => {
     const t = template('{value|date:short}');
-    const result = t({ value: '2025-10-13T00:00:00Z' as any });
+    const result = t({ value: '2025-10-13T00:00:00Z' as unknown });
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(4);
   });
