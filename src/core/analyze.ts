@@ -155,7 +155,8 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
     for (const node of ast.nodes) {
       if (node.kind === 'Placeholder') {
         const value = resolvePath(options.context, node.path);
-        if (value === undefined) {
+        // Check for both undefined and null to match runtime behavior
+        if (value === undefined || value === null) {
           const range = astRangeToRange(source, node.range, lineStarts);
           const posInfo = atPos(source, node.range.start, lineStarts);
           messages.push({

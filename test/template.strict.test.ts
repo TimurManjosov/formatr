@@ -206,8 +206,9 @@ describe('formatr: strictKeys option', () => {
         context: { name: null },
         strictKeys: true,
       });
-      // null is treated as undefined for missing key check
-      expect(messages.length).toBe(0); // resolvePath returns null, which is not undefined
+      // null is treated as missing (same as runtime behavior)
+      expect(messages.length).toBe(1);
+      expect(messages[0].code).toBe('missing-key');
     });
 
     it('handles deeply nested missing paths', () => {
