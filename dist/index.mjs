@@ -386,7 +386,226 @@ function template(source, options = {}) {
   const ast = parseTemplate(source);
   return compile(ast, options);
 }
+
+// src/core/position.ts
+function buildLineStarts(src) {
+  const starts = [0];
+  for (let i = 0; i < src.length; i++) {
+    if (src.charCodeAt(i) === 10) starts.push(i + 1);
+  }
+  return starts;
+}
+function indexToLineCol(src, index, lineStarts) {
+  const starts = lineStarts ?? buildLineStarts(src);
+  if (starts.length === 0) return { line: 1, column: 1 };
+  let lo = 0, hi = starts.length - 1;
+  while (lo <= hi) {
+    const mid = lo + hi >> 1;
+    if (starts[mid] !== void 0 && starts[mid] <= index) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  const line = hi + 1;
+  const column = index - (starts[hi] ?? 0) + 1;
+  return { line, column };
+}
+
+// src/core/analyze.ts
+function astRangeToRange(source, astRange, lineStarts) {
+  const start = indexToLineCol(source, astRange.start, lineStarts);
+  const end = indexToLineCol(source, astRange.end, lineStarts);
+  return { start, end };
+}
+function inferPlaceholderType(path) {
+  const key = path[path.length - 1]?.toLowerCase() ?? "";
+  if (key.includes("count") || key.includes("price") || key.includes("age") || key.includes("quantity") || key.includes("amount") || key.includes("total") || key.includes("sum") || key.includes("num")) {
+    return "number";
+  }
+  if (key.includes("name") || key.includes("title") || key.includes("description") || key.includes("id") || key.includes("text") || key.includes("label") || key.includes("message")) {
+    return "string";
+  }
+  return "unknown";
+}
+function getFilterExpectedType(filterName) {
+  if (["number", "percent", "currency", "plural"].includes(filterName)) return "number";
+  if (["upper", "lower", "trim", "slice", "pad", "truncate", "replace"].includes(filterName)) return "string";
+  if (["date"].includes(filterName)) return "date";
+  return "unknown";
+}
+function resolvePath(context, path) {
+  let current = context;
+  for (const key of path) {
+    if (current == null || typeof current !== "object") return void 0;
+    current = current[key];
+    if (current === void 0) return void 0;
+  }
+  return current;
+}
+function atPos(source, pos, lineStarts) {
+  const { line, column } = indexToLineCol(source, pos, lineStarts);
+  return { pos, line, column };
+}
+function analyze(source, options = {}) {
+  const messages = [];
+  const lineStarts = buildLineStarts(source);
+  let ast;
+  try {
+    ast = parseTemplate(source);
+  } catch (e) {
+    if (e instanceof FormatrError) {
+      const pos = e.pos ?? 0;
+      const posInfo = atPos(source, pos, lineStarts);
+      const range2 = astRangeToRange(source, { start: pos, end: pos + 1 }, lineStarts);
+      messages.push({
+        code: "parse-error",
+        message: e.message,
+        severity: "error",
+        range: range2,
+        ...posInfo
+      });
+      return { messages };
+    }
+    const range = astRangeToRange(source, { start: 0, end: 1 }, lineStarts);
+    messages.push({
+      code: "parse-error",
+      message: e?.message ?? String(e),
+      severity: "error",
+      range
+    });
+    return { messages };
+  }
+  const registry = {
+    ...builtinFilters,
+    ...makeIntlFilters(options.locale),
+    ...options.filters ?? {}
+  };
+  if (options.context !== void 0 && options.onMissing === "error") {
+    for (const node of ast.nodes) {
+      if (node.kind === "Placeholder") {
+        const value = resolvePath(options.context, node.path);
+        if (value === void 0) {
+          const range = astRangeToRange(source, node.range, lineStarts);
+          const posInfo = atPos(source, node.range.start, lineStarts);
+          messages.push({
+            code: "missing-key",
+            message: `Missing key "${node.path.join(".")}" in context`,
+            severity: "error",
+            range,
+            data: { path: node.path },
+            ...posInfo
+          });
+        }
+      }
+    }
+  }
+  for (const node of ast.nodes) {
+    if (node.kind !== "Placeholder" || !node.filters?.length) continue;
+    for (const f of node.filters) {
+      const fn = registry[f.name];
+      if (!fn) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: "unknown-filter",
+          message: `Unknown filter "${f.name}"`,
+          severity: "error",
+          range,
+          data: { filter: f.name },
+          ...posInfo
+        });
+        continue;
+      }
+      const expectedType = getFilterExpectedType(f.name);
+      const inferredType = inferPlaceholderType(node.path);
+      if (expectedType !== "unknown" && inferredType !== "unknown" && expectedType !== inferredType) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: "suspicious-filter",
+          message: `Filter "${f.name}" expects a ${expectedType}, but "${node.path.join(".")}" likely produces a ${inferredType}`,
+          severity: "warning",
+          range,
+          data: { filter: f.name, placeholder: node.path.join("."), expectedType },
+          ...posInfo
+        });
+      }
+      if (f.name === "plural" && f.args.length !== 2) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: "bad-args",
+          message: `Filter "plural" requires exactly 2 arguments (e.g. one, other)`,
+          severity: "error",
+          range,
+          data: { filter: f.name, expected: 2, got: f.args.length },
+          ...posInfo
+        });
+      }
+      if (f.name === "currency" && f.args.length < 1) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: "bad-args",
+          message: `Filter "currency" requires at least 1 argument: currency code (e.g., USD)`,
+          severity: "error",
+          range,
+          data: { filter: f.name, expected: "at least 1", got: f.args.length },
+          ...posInfo
+        });
+      }
+      if (f.name === "slice" && (f.args.length < 1 || f.args.length > 2)) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: "bad-args",
+          message: `Filter "slice" requires 1 or 2 arguments: start, end?`,
+          severity: "error",
+          range,
+          data: { filter: f.name, expected: "1-2", got: f.args.length },
+          ...posInfo
+        });
+      }
+      if (f.name === "pad" && (f.args.length < 1 || f.args.length > 3)) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: "bad-args",
+          message: `Filter "pad" requires 1 to 3 arguments: length, direction?, char?`,
+          severity: "error",
+          range,
+          data: { filter: f.name, expected: "1-3", got: f.args.length },
+          ...posInfo
+        });
+      }
+      if (f.name === "truncate" && (f.args.length < 1 || f.args.length > 2)) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: "bad-args",
+          message: `Filter "truncate" requires 1 or 2 arguments: length, ellipsis?`,
+          severity: "error",
+          range,
+          data: { filter: f.name, expected: "1-2", got: f.args.length },
+          ...posInfo
+        });
+      }
+      if (f.name === "replace" && f.args.length !== 2) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: "bad-args",
+          message: `Filter "replace" requires exactly 2 arguments: from, to`,
+          severity: "error",
+          range,
+          data: { filter: f.name, expected: 2, got: f.args.length },
+          ...posInfo
+        });
+      }
+    }
+  }
+  return { messages };
+}
 export {
   FormatrError,
+  analyze,
   template
 };

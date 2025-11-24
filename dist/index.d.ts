@@ -16,4 +16,38 @@ declare class FormatrError extends Error {
     constructor(message?: string, pos?: number | undefined);
 }
 
-export { FormatrError, template };
+type DiagnosticCode = 'parse-error' | 'unknown-filter' | 'bad-args' | 'suspicious-filter' | 'missing-key';
+interface Position {
+    line: number;
+    column: number;
+}
+interface Range {
+    start: Position;
+    end: Position;
+}
+type DiagnosticSeverity = 'error' | 'warning' | 'info';
+interface Diagnostic {
+    code: DiagnosticCode;
+    message: string;
+    severity: DiagnosticSeverity;
+    range: Range;
+    data?: Record<string, unknown>;
+    /** @deprecated Use range instead */
+    pos?: number;
+    /** @deprecated Use range.start.line instead */
+    line?: number;
+    /** @deprecated Use range.start.column instead */
+    column?: number;
+}
+interface AnalyzeOptions {
+    locale?: string;
+    filters?: Record<string, Filter>;
+    context?: unknown;
+    onMissing?: 'error' | 'keep' | ((key: string) => string);
+}
+interface AnalysisReport {
+    messages: Diagnostic[];
+}
+declare function analyze(source: string, options?: AnalyzeOptions): AnalysisReport;
+
+export { type AnalysisReport, type AnalyzeOptions, type Diagnostic, type DiagnosticCode, type DiagnosticSeverity, FormatrError, type Position, type Range, analyze, template };
