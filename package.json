@@ -19,7 +19,7 @@
     "format": "prettier --write .",
     "check": "pnpm lint && pnpm test && pnpm build",
     "bench": "tsx bench/render.bench.ts",
-    "examples": "tsx examples/basic.ts && tsx examples/intl.ts"
+    "examples": "tsx examples/basic.ts && tsx examples/intl.ts && tsx examples/cli-logging.ts && tsx examples/email-templates.ts && tsx examples/i18n.ts && tsx examples/form-validation.ts && tsx examples/custom-filters.ts && tsx examples/api-responses.ts"
   },
   "keywords": [],
   "author": "",
