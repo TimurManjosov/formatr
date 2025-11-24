@@ -1,0 +1,27 @@
+name: Copilot SWE Agent
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+
+jobs:
+  copilot-task:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Git diagnostics
+        run: |
+          echo "=== Git diagnostics ==="
+          git --version || true
+          if [ -d .git ]; then 
+            ls -la .git || true
+          else 
+            echo ".git directory not present"
+          fi
+          git status --porcelain || true
+          git rev-parse --abbrev-ref HEAD || true
