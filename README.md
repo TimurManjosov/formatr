@@ -40,6 +40,7 @@ A tiny, type‑safe templating engine that combines placeholders, filters, inter
 - [API](#-api)
   - [Options](#options)
 - [Built-in Filters](#-built-in-filters)
+- [Filter Behavior](#-filter-behavior)
 - [Custom Filters](#-custom-filters)
 - [Dot-Paths](#-dot-paths)
 - [Diagnostics](#-diagnostics)
@@ -319,6 +320,193 @@ const t = template<{ name: string }>(
 console.log(t({ name: "  Alice  " }));
 // → "ALICE"
 ```
+
+---
+
+## 🔧 Filter Behavior
+
+Understanding how filters handle edge cases and invalid inputs is crucial for building robust templates. This section documents the consistent behavior across all built-in filters.
+
+### General Principles
+
+All `formatr` filters follow these principles:
+
+1. **Type Coercion**: Text filters (like `upper`, `lower`, `trim`) coerce inputs to strings using `String(value)`
+2. **Graceful Fallback**: Number and date filters return the string representation of invalid inputs instead of throwing errors
+3. **Explicit Errors**: Filters throw clear errors only when required arguments are missing
+4. **Consistent Behavior**: All filters handle `null`, `undefined`, `NaN`, `Infinity`, objects, and arrays predictably
+
+### Filter Input Types and Behavior
+
+| Filter | Expected Input | Invalid Input Behavior | Example |
+|--------|---------------|----------------------|---------|
+| **Text Filters** |
+| `upper`, `lower`, `trim` | Any value | Coerced to string via `String(value)` | `upper(42)` → `"42"` |
+| `slice`, `pad`, `truncate`, `replace` | String-like | Coerced to string, then transformed | `slice(42, '0', '2')` → `"42"` |
+| **Plural Filter** |
+| `plural` | Finite number | Returns `String(value)` for non-numbers | `plural(NaN)` → `"NaN"` |
+| **Number Filters** |
+| `number`, `percent` | Finite number | Returns `String(value)` for non-numbers | `number("text")` → `"text"` |
+| `currency` | Finite number | Returns `String(value)` for non-numbers | `currency(NaN, "USD")` → `"NaN"` |
+| **Date Filter** |
+| `date` | Date, timestamp, ISO string | Returns `String(value)` for invalid dates | `date("invalid")` → `"invalid"` |
+
+### Edge Case Examples
+
+#### Text Filters with Non-String Inputs
+
+```typescript
+import { template } from "@timur_manjosov/formatr";
+
+// Numbers are converted to strings
+const t1 = template('{value|upper}');
+console.log(t1({ value: 42 }));
+// → "42"
+
+// NaN becomes "NAN"
+console.log(t1({ value: NaN }));
+// → "NAN"
+
+// Objects use their toString representation
+console.log(t1({ value: { key: 'val' } }));
+// → "[OBJECT OBJECT]"
+
+// Arrays are joined with commas
+console.log(t1({ value: [1, 2, 3] }));
+// → "1,2,3"
+```
+
+#### Number Filters with Invalid Inputs
+
+```typescript
+// Non-numeric strings fall back to their string representation
+const t2 = template('{value|number}');
+console.log(t2({ value: 'not a number' as any }));
+// → "not a number"
+
+// NaN and Infinity are returned as strings
+console.log(t2({ value: NaN }));
+// → "NaN"
+
+console.log(t2({ value: Infinity }));
+// → "Infinity"
+
+// Numeric strings are parsed and formatted
+console.log(t2({ value: '123.45' as any }));
+// → "123.45" (formatted according to locale)
+```
+
+#### Plural Filter Behavior
+
+```typescript
+const t3 = template('{count|plural:item,items}');
+
+// Normal usage
+console.log(t3({ count: 1 }));
+// → "item"
+
+console.log(t3({ count: 5 }));
+// → "items"
+
+// Non-finite numbers fall back to string representation
+console.log(t3({ count: NaN }));
+// → "NaN"
+
+console.log(t3({ count: Infinity }));
+// → "Infinity"
+
+// Missing arguments throw explicit errors
+try {
+  const t4 = template('{count|plural:item}');
+  t4({ count: 1 });
+} catch (err) {
+  console.error(err.message);
+  // → "plural filter requires two args: singular, plural"
+}
+```
+
+#### Currency Filter with Invalid Inputs
+
+```typescript
+const t4 = template('{value|currency:USD}');
+
+// Non-numeric values fall back to string representation
+console.log(t4({ value: 'not a number' as any }));
+// → "not a number"
+
+console.log(t4({ value: NaN }));
+// → "NaN"
+
+// Missing currency code throws an error
+try {
+  const t5 = template('{value|currency}');
+  t5({ value: 42 });
+} catch (err) {
+  console.error(err.message);
+  // → "currency filter requires code, e.g., currency:EUR"
+}
+```
+
+#### Date Filter with Invalid Dates
+
+```typescript
+const t5 = template('{value|date:short}');
+
+// Invalid date strings fall back to string representation
+console.log(t5({ value: 'not a date' as any }));
+// → "not a date"
+
+// Invalid Date objects return "Invalid Date"
+console.log(t5({ value: new Date('invalid') }));
+// → "Invalid Date"
+
+// Valid dates are formatted according to style
+console.log(t5({ value: new Date('2025-10-13') }));
+// → "10/13/25" (en-US locale with short style)
+```
+
+### Argument Validation
+
+The `analyze()` function validates filter arguments at analysis time, helping catch errors before runtime:
+
+```typescript
+import { analyze } from "@timur_manjosov/formatr";
+
+// Missing arguments for plural filter
+const report1 = analyze('{count|plural:item}');
+console.log(report1.messages[0].message);
+// → 'Filter "plural" requires exactly 2 arguments (e.g. one, other)'
+
+// Missing arguments for currency filter
+const report2 = analyze('{price|currency}');
+console.log(report2.messages[0].message);
+// → 'Filter "currency" requires at least 1 argument: currency code (e.g., USD)'
+
+// Missing arguments for date filter
+const report3 = analyze('{date|date}');
+console.log(report3.messages[0].message);
+// → 'Filter "date" requires 1 argument: style (short, medium, long, or full)'
+```
+
+### Handling Null and Undefined
+
+By default, `null` and `undefined` values in the context trigger the `onMissing` behavior. To pass these values through to filters, ensure they are explicitly set in the context:
+
+```typescript
+// null/undefined trigger onMissing by default
+const t1 = template('{value|upper}');
+console.log(t1({ value: null }));
+// → "{value}" (with default onMissing: "keep")
+
+// With onMissing as a function
+const t2 = template('{value|upper}', {
+  onMissing: (key) => '[missing]'
+});
+console.log(t2({ value: null }));
+// → "[missing]"
+```
+
+This behavior ensures that missing data is handled gracefully while still allowing filters to process legitimate falsy values like `0`, `false`, or empty strings.
 
 ---
 
