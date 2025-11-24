@@ -19,6 +19,63 @@ function makeCacheKey(source: string, options: CompileOptions): string {
   return JSON.stringify([source, opt]);
 }
 
+/**
+ * Compiles a template string into a reusable function that accepts a context object and returns a formatted string.
+ * 
+ * The template function supports placeholders with filters, dot-path notation, and internationalization.
+ * Compiled templates are cached for performance.
+ * 
+ * @template T - The type of the context object
+ * @param source - The template string containing placeholders and filters (e.g., "Hello {name|upper}")
+ * @param options - Configuration options for the template
+ * @param options.locale - Locale for internationalization filters (e.g., "en-US", "de-DE")
+ * @param options.onMissing - Behavior when a placeholder key is missing:
+ *   - "error": Throws an exception (default)
+ *   - "keep": Leaves the placeholder unchanged in the output
+ *   - function: Custom function returning a fallback string
+ * @param options.filters - Custom filter functions to extend built-in filters
+ * @param options.cacheSize - Maximum number of compiled templates to cache (default: 200, set to 0 to disable)
+ * @returns A function that takes a context object and returns the formatted string
+ * 
+ * @example
+ * // Basic usage with filters
+ * const greet = template<{ name: string; count: number }>(
+ *   "Hello {name|upper}, you have {count|plural:message,messages}"
+ * );
+ * console.log(greet({ name: "Alice", count: 1 }));
+ * // → "Hello ALICE, you have message"
+ * 
+ * @example
+ * // With internationalization
+ * const price = template<{ amount: number }>(
+ *   "Total: {amount|currency:USD}",
+ *   { locale: "en-US" }
+ * );
+ * console.log(price({ amount: 42.99 }));
+ * // → "Total: $42.99"
+ * 
+ * @example
+ * // With custom filters
+ * const t = template<{ text: string }>(
+ *   "{text|reverse}",
+ *   {
+ *     filters: {
+ *       reverse: (val: unknown) => String(val).split('').reverse().join('')
+ *     }
+ *   }
+ * );
+ * console.log(t({ text: "hello" }));
+ * // → "olleh"
+ * 
+ * @example
+ * // With custom missing handler
+ * const t = template<{ name?: string }>(
+ *   "Hello {name}",
+ *   { onMissing: (key) => `[${key} not provided]` }
+ * );
+ * console.log(t({}));
+ * // → "Hello [name not provided]"
+ */
 export function template<T extends Ctx = Ctx>(
   source: string,
   options: CompileOptions = {}

@@ -111,6 +111,75 @@ function atPos(source: string, pos: number, lineStarts: number[]) {
   return { pos, line, column };
 }
 
+/**
+ * Analyzes a template string and returns diagnostic information about potential issues.
+ * 
+ * This function performs static analysis on template strings to detect:
+ * - Parse errors and syntax issues
+ * - Unknown or misspelled filters
+ * - Invalid filter arguments
+ * - Suspicious filter usage (type mismatches)
+ * - Missing keys in the provided context
+ * 
+ * The analyzer can be integrated into editors, linters, or build processes for early detection
+ * of template issues.
+ * 
+ * @param source - The template string to analyze
+ * @param options - Analysis configuration options
+ * @param options.locale - Locale for filter resolution (affects which filters are available)
+ * @param options.filters - Custom filters to include in analysis
+ * @param options.context - Context object to validate placeholders against
+ * @param options.onMissing - Enables missing key detection when set to "error" with a context
+ * @param options.strictKeys - When true, validates all placeholders exist in context
+ * @returns An analysis report containing an array of diagnostic messages
+ * 
+ * @example
+ * // Detect invalid filter arguments
+ * const report = analyze("{count|plural:singular}");
+ * console.log(report.messages[0]);
+ * // {
+ * //   code: "bad-args",
+ * //   message: 'Filter "plural" requires exactly 2 arguments (e.g. one, other)',
+ * //   severity: "error",
+ * //   range: { start: { line: 1, column: 7 }, end: { line: 1, column: 24 } }
+ * // }
+ * 
+ * @example
+ * // Detect unknown filters
+ * const report = analyze("{name|unknownFilter}");
+ * console.log(report.messages[0]);
+ * // {
+ * //   code: "unknown-filter",
+ * //   message: 'Unknown filter "unknownFilter"',
+ * //   severity: "error",
+ * //   ...
+ * // }
+ * 
+ * @example
+ * // Validate placeholders against context
+ * const report = analyze("{name} {age}", {
+ *   context: { age: 30 },
+ *   onMissing: "error"
+ * });
+ * console.log(report.messages[0]);
+ * // {
+ * //   code: "missing-key",
+ * //   message: 'Missing key "name" in context',
+ * //   severity: "error",
+ * //   ...
+ * // }
+ * 
+ * @example
+ * // Detect suspicious filter usage
+ * const report = analyze("{username|number}");
+ * console.log(report.messages[0]);
+ * // {
+ * //   code: "suspicious-filter",
+ * //   message: 'Filter "number" expects a number, but "username" likely produces a string',
+ * //   severity: "warning",
+ * //   ...
+ * // }
+ */
 export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisReport {
   const messages: Diagnostic[] = [];
   const lineStarts = buildLineStarts(source);
