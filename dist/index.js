@@ -225,6 +225,7 @@ function getPathValue(obj, path) {
 }
 function compile(ast, options = {}) {
   const onMissing = options.onMissing ?? "keep";
+  const strictKeys = options.strictKeys ?? false;
   const registry = {
     ...builtinFilters,
     ...makeIntlFilters(options.locale),
@@ -252,7 +253,7 @@ function compile(ast, options = {}) {
       const { found, value } = getPathValue(ctx, p.path);
       if (!found || value == null) {
         const keyStr = p.path.join(".");
-        if (onMissing === "error") throw new FormatrError(`Missing key "${keyStr}"`);
+        if (strictKeys || onMissing === "error") throw new FormatrError(`Missing key "${keyStr}"`);
         if (onMissing === "keep") {
           out += `{${keyStr}}`;
           continue;
@@ -389,6 +390,7 @@ function makeCacheKey(source, options) {
   const opt = {
     locale: options.locale ?? null,
     onMissing: options.onMissing ?? "keep",
+    strictKeys: options.strictKeys ?? false,
     // include the filter names only (implementations come from user each call;
     // we assume same names = same behavior for caching purposes)
     filters: options.filters ? Object.keys(options.filters).sort() : []
@@ -506,7 +508,7 @@ function analyze(source, options = {}) {
     ...makeIntlFilters(options.locale),
     ...options.filters ?? {}
   };
-  if (options.context !== void 0 && options.onMissing === "error") {
+  if (options.context !== void 0 && (options.strictKeys || options.onMissing === "error")) {
     for (const node of ast.nodes) {
       if (node.kind === "Placeholder") {
         const value = resolvePath(options.context, node.path);

@@ -7,6 +7,7 @@ interface CompileOptions {
     filters?: Record<string, Filter>;
     locale?: string;
     cacheSize?: number;
+    strictKeys?: boolean;
 }
 
 declare function template<T extends Ctx = Ctx>(source: string, options?: CompileOptions): (ctx: T) => string;
@@ -44,6 +45,7 @@ interface AnalyzeOptions {
     filters?: Record<string, Filter>;
     context?: unknown;
     onMissing?: 'error' | 'keep' | ((key: string) => string);
+    strictKeys?: boolean;
 }
 interface AnalysisReport {
     messages: Diagnostic[];

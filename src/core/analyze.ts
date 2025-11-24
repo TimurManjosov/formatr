@@ -42,6 +42,7 @@ export interface AnalyzeOptions {
   filters?: Record<string, Filter>;
   context?: unknown;
   onMissing?: 'error' | 'keep' | ((key: string) => string);
+  strictKeys?: boolean;
 }
 
 export interface AnalysisReport {
@@ -149,7 +150,8 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
   };
 
   // Check for missing placeholders if context is provided
-  if (options.context !== undefined && options.onMissing === 'error') {
+  // strictKeys takes precedence over onMissing
+  if (options.context !== undefined && (options.strictKeys || options.onMissing === 'error')) {
     for (const node of ast.nodes) {
       if (node.kind === 'Placeholder') {
         const value = resolvePath(options.context, node.path);
