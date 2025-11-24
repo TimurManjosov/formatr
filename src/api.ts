@@ -10,6 +10,7 @@ function makeCacheKey(source: string, options: CompileOptions): string {
   const opt = {
     locale: options.locale ?? null,
     onMissing: options.onMissing ?? 'keep',
+    strictKeys: options.strictKeys ?? false,
     // include the filter names only (implementations come from user each call;
     // we assume same names = same behavior for caching purposes)
     filters: options.filters ? Object.keys(options.filters).sort() : [],

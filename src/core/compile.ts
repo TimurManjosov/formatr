@@ -12,6 +12,7 @@ export interface CompileOptions {
   locale?: string;
   // new:
   cacheSize?: number; // default 200 (0 disables)
+  strictKeys?: boolean; // enforce key presence at render time
 }
 
 type ResolvedFilter = { fn: Filter; args: string[] };
@@ -33,6 +34,7 @@ function getPathValue(obj: unknown, path: string[]): { found: boolean; value?: u
 
 export function compile(ast: TemplateAST, options: CompileOptions = {}) {
   const onMissing = options.onMissing ?? 'keep';
+  const strictKeys = options.strictKeys ?? false;
 
   const registry: Record<string, Filter> = {
     ...builtinFilters,
@@ -67,7 +69,8 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
       const { found, value } = getPathValue(ctx, p.path);
       if (!found || value == null) {
         const keyStr = p.path.join('.');
-        if (onMissing === 'error') throw new FormatrError(`Missing key "${keyStr}"`);
+        // strictKeys takes precedence over onMissing
+        if (strictKeys || onMissing === 'error') throw new FormatrError(`Missing key "${keyStr}"`);
         if (onMissing === 'keep') {
           out += `{${keyStr}}`;
           continue;

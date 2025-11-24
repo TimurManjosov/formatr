@@ -257,8 +257,9 @@ describe('analyze: enhanced diagnostics', () => {
       const context = { value: null };
       const r = analyze('{value}', { context, onMissing: 'error' });
       const m = r.messages.find((x) => x.code === 'missing-key');
-      // null is a valid value, should not report missing
-      expect(m).toBeUndefined();
+      // null is treated as missing (same as runtime behavior)
+      expect(m).toBeDefined();
+      expect(m?.code).toBe('missing-key');
     });
 
     it('handles zero values correctly', () => {
