@@ -193,14 +193,23 @@ const t = template<{ name?: string }>(
 
 ### `analyze(source, options?): { messages: Diagnostic[] }`
 
-Analyzes a template string and returns diagnostic information about potential issues, including unknown filters, invalid arguments, and syntax errors. This is useful for editor integrations and build-time validation.
+Analyzes a template string and returns diagnostic information about potential issues, including unknown filters, invalid arguments, syntax errors, suspicious usage patterns, and missing placeholders.
 
 **Parameters:**
 
 - `source` (string) – The template string to analyze
-- `options` (object, optional) – Analysis configuration (same as template options)
+- `options` (object, optional) – Analysis configuration:
+  - `locale` (string, optional) – Locale for filter resolution
+  - `filters` (object, optional) – Custom filters to include in analysis
+  - `context` (any, optional) – Context object to validate placeholders against
+  - `onMissing` (`"error"` | `"keep"` | function, optional) – Enables missing key detection when set to `"error"` with a `context`
 
-**Returns:** An object containing an array of diagnostic messages.
+**Returns:** An object containing an array of diagnostic messages with:
+- `code` – Diagnostic type (`"parse-error"`, `"unknown-filter"`, `"bad-args"`, `"suspicious-filter"`, `"missing-key"`)
+- `message` – Human-readable description
+- `severity` – Issue severity (`"error"`, `"warning"`, `"info"`)
+- `range` – Precise position with `start` and `end` line/column
+- `data` – Structured metadata for tooling
 
 **Example:**
 
@@ -214,9 +223,29 @@ console.log(report.messages);
 //   {
 //     code: "bad-args",
 //     message: 'Filter "plural" requires exactly 2 arguments (e.g. one, other)',
-//     range: { start: {...}, end: {...} }
+//     severity: "error",
+//     range: { start: { line: 1, column: 7 }, end: { line: 1, column: 24 } },
+//     data: { filter: "plural", expected: 2, got: 1 }
 //   }
 // ]
+```
+
+**With Context Validation:**
+
+```typescript
+const report = analyze("{name} {age}", {
+  context: { age: 30 },
+  onMissing: "error"
+});
+
+// Reports missing "name" key
+console.log(report.messages[0]);
+// {
+//   code: "missing-key",
+//   message: 'Missing key "name" in context',
+//   severity: "error",
+//   ...
+// }
 ```
 
 Integrate `analyze()` into your editor, linter, or build process for early detection of template issues.
@@ -411,10 +440,22 @@ console.log(report.messages);
 //   {
 //     code: "bad-args",
 //     message: 'Filter "plural" requires exactly 2 arguments (e.g. one, other)',
-//     range: { start: { line: 0, column: 7 }, end: { line: 0, column: 19 } }
+//     severity: "error",
+//     range: { start: { line: 1, column: 7 }, end: { line: 1, column: 18 } },
+//     data: { filter: "plural", expected: 2, got: 1 }
 //   }
 // ]
 ```
+
+### Diagnostic Features
+
+The enhanced diagnostics provide:
+
+- **Precise Position Ranges** – Exact `start` and `end` locations for each issue
+- **Severity Levels** – Distinguish between `"error"`, `"warning"`, and `"info"`
+- **Structured Metadata** – Additional details in the `data` field for tooling
+- **Suspicious Usage Detection** – Warns about potential type mismatches
+- **Missing Key Detection** – Validate placeholders against provided context
 
 ### Diagnostic Types
 
@@ -423,7 +464,45 @@ The analyzer can detect:
 - **Unknown filters** – References to filters that don't exist
 - **Argument mismatches** – Incorrect number of arguments for built-in filters
 - **Syntax errors** – Malformed template syntax
-- **Type inconsistencies** – When used with TypeScript
+- **Suspicious usage** – Type mismatches (e.g., using `number` filter on string placeholders)
+- **Missing keys** – Placeholders not found in the provided context (when `onMissing: "error"`)
+
+### Enhanced Examples
+
+**Suspicious Filter Usage:**
+
+```typescript
+const report = analyze("{username|number}");
+// Warning: Filter "number" expects a number, but "username" likely produces a string
+
+console.log(report.messages[0]);
+// {
+//   code: "suspicious-filter",
+//   message: 'Filter "number" expects a number, but "username" likely produces a string',
+//   severity: "warning",
+//   range: { start: { line: 1, column: 10 }, end: { line: 1, column: 17 } },
+//   data: { filter: "number", placeholder: "username", expectedType: "number" }
+// }
+```
+
+**Missing Key Detection:**
+
+```typescript
+const report = analyze("{name} {age}", { 
+  context: { age: 30 }, 
+  onMissing: "error" 
+});
+
+// Reports missing "name" key
+console.log(report.messages[0]);
+// {
+//   code: "missing-key",
+//   message: 'Missing key "name" in context',
+//   severity: "error",
+//   range: { start: { line: 1, column: 1 }, end: { line: 1, column: 7 } },
+//   data: { path: ["name"] }
+// }
+```
 
 ### Integration Examples
 
@@ -440,8 +519,9 @@ const templates = [
 
 templates.forEach(tmpl => {
   const { messages } = analyze(tmpl);
-  if (messages.length > 0) {
-    console.error(`Issues in template "${tmpl}":`, messages);
+  const errors = messages.filter(m => m.severity === "error");
+  if (errors.length > 0) {
+    console.error(`Issues in template "${tmpl}":`, errors);
     process.exit(1);
   }
 });
@@ -449,7 +529,16 @@ templates.forEach(tmpl => {
 
 **Editor Integration:**
 
-Diagnostics include position information (line, column) suitable for editor integration, allowing for real-time feedback as developers write templates.
+Diagnostics include precise position ranges compatible with LSP (Language Server Protocol), enabling real-time feedback in editors like VS Code:
+
+```typescript
+const report = analyze("Line 1\n{foo|nope}\nLine 3");
+const diagnostic = report.messages[0];
+
+// Use range for editor highlighting
+console.log(`Error at line ${diagnostic.range.start.line}, columns ${diagnostic.range.start.column}-${diagnostic.range.end.column}`);
+// → Error at line 2, columns 5-10
+```
 
 ---
 
