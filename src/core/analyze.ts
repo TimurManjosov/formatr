@@ -284,6 +284,18 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
           ...posInfo,
         });
       }
+      if (f.name === 'date' && f.args.length < 1) {
+        const range = astRangeToRange(source, f.range, lineStarts);
+        const posInfo = atPos(source, f.range.start, lineStarts);
+        messages.push({
+          code: 'bad-args',
+          message: `Filter "date" requires 1 argument: style (short, medium, long, or full)`,
+          severity: 'error',
+          range,
+          data: { filter: f.name, expected: 'at least 1', got: f.args.length },
+          ...posInfo,
+        });
+      }
     }
   }
 
