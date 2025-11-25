@@ -20,7 +20,7 @@ function bench(name: string, fn: () => void, iterations: number): BenchResult {
     fn();
   }
   const durationMs = now() - start;
-  const opsPerSec = Math.round((iterations / durationMs) * 1000);
+  const opsPerSec = Math.round((iterations / (durationMs || 1)) * 1000);
 
   return { name, iterations, durationMs, opsPerSec };
 }

@@ -72,24 +72,24 @@ describe('formatr: compiler optimizations', () => {
 
   describe('keyStr pre-computation', () => {
     it('uses pre-computed keyStr in error messages', () => {
-      const t = template<{ user: { name: string } }>('{user.name}', {
+      const t = template<{ user?: { name?: string } }>('{user.name}', {
         onMissing: 'error',
       });
-      expect(() => t({} as any)).toThrow(/Missing key "user.name"/);
+      expect(() => t({})).toThrow(/Missing key "user.name"/);
     });
 
     it('uses pre-computed keyStr in keep mode', () => {
-      const t = template<{ user: { profile: { name: string } } }>('{user.profile.name}', {
+      const t = template<{ user?: { profile?: { name?: string } } }>('{user.profile.name}', {
         onMissing: 'keep',
       });
-      expect(t({} as any)).toBe('{user.profile.name}');
+      expect(t({})).toBe('{user.profile.name}');
     });
 
     it('uses pre-computed keyStr in custom handler', () => {
-      const t = template<{ a: { b: { c: string } } }>('{a.b.c}', {
+      const t = template<{ a?: { b?: { c?: string } } }>('{a.b.c}', {
         onMissing: (key) => `[${key}]`,
       });
-      expect(t({} as any)).toBe('[a.b.c]');
+      expect(t({})).toBe('[a.b.c]');
     });
   });
 
