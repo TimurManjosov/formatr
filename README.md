@@ -1066,6 +1066,23 @@ app.use(formatError);
 
 ### Performance Optimization
 
+`formatr` is optimized for high-performance string formatting with pre-compiled templates and intelligent caching.
+
+#### Performance Metrics
+
+Typical benchmark results (`pnpm bench`):
+
+| Template Type | Performance | Description |
+|---------------|-------------|-------------|
+| Static templates | ~150M ops/sec | Templates with no placeholders |
+| Simple placeholder | ~7M ops/sec | `"Hello {name}"` |
+| Nested paths | ~6M ops/sec | `"{user.profile.name}"` |
+| Multiple filters | ~4-6M ops/sec | `"{name\|trim\|upper}"` |
+| Intl formatting | ~25K ops/sec | `"{price\|currency:USD}"` |
+| Cache hits | ~500K+ ops/sec | Template already compiled |
+
+> 📊 For detailed benchmarks and optimization strategies, see [PERFORMANCE.md](PERFORMANCE.md).
+
 #### Template Caching
 
 `formatr` automatically caches compiled templates (default: 200 entries). Adjust cache size based on your needs:
