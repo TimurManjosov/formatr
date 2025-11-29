@@ -194,6 +194,24 @@ describe('parser: quoted filter arguments', () => {
       }
     });
 
+    it('handles leading comma for empty first argument', () => {
+      const ast = parseTemplate('{text|filter:,b}');
+      const placeholder = ast.nodes[0];
+      expect(placeholder.kind).toBe('Placeholder');
+      if (placeholder.kind === 'Placeholder' && placeholder.filters) {
+        expect(placeholder.filters[0].args).toEqual(['', 'b']);
+      }
+    });
+
+    it('handles comma-only for two empty arguments', () => {
+      const ast = parseTemplate('{text|filter:,}');
+      const placeholder = ast.nodes[0];
+      expect(placeholder.kind).toBe('Placeholder');
+      if (placeholder.kind === 'Placeholder' && placeholder.filters) {
+        expect(placeholder.filters[0].args).toEqual(['', '']);
+      }
+    });
+
     it('works with existing templates', () => {
       const t = template('{n|plural:apple,apples}');
       expect(t({ n: 1 })).toBe('apple');
