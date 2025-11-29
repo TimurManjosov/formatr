@@ -520,6 +520,94 @@ console.log(t({ name: "  Alice  " }));
 // → "ALICE"
 ```
 
+### Quoted Filter Arguments
+
+When filter arguments need to contain special characters like commas (`,`), colons (`:`), pipes (`|`), or closing braces (`}`), you can wrap them in quotes:
+
+```typescript
+import { template } from "@timur_manjosov/formatr";
+
+// Quoted arguments allow commas in arguments
+const t1 = template<{ text: string }>(
+  '{text|truncate:30,"..."}'
+);
+console.log(t1({ text: "This is a very long text that needs to be truncated" }));
+// → "This is a very long text th..."
+
+// Quoted arguments allow colons and other special characters
+const t2 = template<{ url: string }>(
+  '{url|replace:"http:","https:"}'
+);
+console.log(t2({ url: "http://example.com" }));
+// → "https://example.com"
+
+// Both double and single quotes work
+const t3 = template<{ text: string }>(
+  "{text|replace:'old','new'}"
+);
+```
+
+#### Escape Sequences
+
+Inside quoted strings, you can use escape sequences:
+
+| Escape | Result |
+|--------|--------|
+| `\"` | `"` (double quote) |
+| `\'` | `'` (single quote) |
+| `\\` | `\` (backslash) |
+| `\,` | `,` (comma) |
+| `\:` | `:` (colon) |
+
+```typescript
+// Escaped quotes inside quoted strings
+const t4 = template<{ name: string }>(
+  '{name|prepend:"He said, \\"Hello\\" "}',
+  {
+    filters: {
+      prepend: (value, prefix) => `${prefix}${String(value)}`
+    }
+  }
+);
+console.log(t4({ name: "Alice" }));
+// → 'He said, "Hello" Alice'
+
+// Escaped backslash for file paths
+const t5 = template<{ path: string }>(
+  '{path|replace:"\\\\","/"}',
+  {
+    filters: {
+      replace: (value, from, to) => String(value).split(from).join(to)
+    }
+  }
+);
+```
+
+#### Mixing Quoted and Unquoted Arguments
+
+You can mix quoted and unquoted arguments in the same filter call:
+
+```typescript
+const t = template<{ text: string }>(
+  '{text|pad:20,left," "}'
+);
+console.log(t({ text: "Hello" }));
+// → "               Hello"
+```
+
+#### Backwards Compatibility
+
+Existing templates without quotes continue to work exactly as before:
+
+```typescript
+// Existing syntax still works
+const t = template<{ count: number }>(
+  "{count|plural:item,items}"
+);
+console.log(t({ count: 5 }));
+// → "items"
+```
+
 ---
 
 ## 🔧 Filter Behavior
