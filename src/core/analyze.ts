@@ -36,9 +36,10 @@ export function levenshteinDistance(a: string, b: string): number {
 
     for (let j = 1; j <= lenB; j++) {
       const cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
-      const deletion = (prevRow[j] ?? 0) + 1;
-      const insertion = (currRow[j - 1] ?? 0) + 1;
-      const substitution = (prevRow[j - 1] ?? 0) + cost;
+      // These array accesses are always within bounds due to the algorithm invariants
+      const deletion = prevRow[j]! + 1;
+      const insertion = currRow[j - 1]! + 1;
+      const substitution = prevRow[j - 1]! + cost;
       currRow[j] = Math.min(deletion, insertion, substitution);
     }
 
@@ -46,7 +47,7 @@ export function levenshteinDistance(a: string, b: string): number {
     [prevRow, currRow] = [currRow, prevRow];
   }
 
-  return prevRow[lenB] ?? lenA;
+  return prevRow[lenB]!;
 }
 
 /**
@@ -100,7 +101,7 @@ function buildUnknownFilterMessage(filterName: string, suggestions: string[]): s
   }
   // For 2+ suggestions: "Did you mean "x" or "y"?" or "Did you mean "x", "y", or "z"?"
   const quoted = suggestions.map(s => `"${s}"`);
-  const last = quoted.pop();
+  const last = quoted.pop()!; // Safe: we checked suggestions.length >= 2
   return `Unknown filter "${filterName}". Did you mean ${quoted.join(', ')} or ${last}?`;
 }
 
