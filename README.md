@@ -934,18 +934,66 @@ The enhanced diagnostics provide:
 - **Structured Metadata** – Additional details in the `data` field for tooling
 - **Suspicious Usage Detection** – Warns about potential type mismatches
 - **Missing Key Detection** – Validate placeholders against provided context
+- **Filter Suggestions** – Smart suggestions for unknown filters based on similar names
 
 ### Diagnostic Types
 
 The analyzer can detect:
 
-- **Unknown filters** – References to filters that don't exist
+- **Unknown filters** – References to filters that don't exist (with suggestions for similar names)
 - **Argument mismatches** – Incorrect number of arguments for built-in filters
 - **Syntax errors** – Malformed template syntax
 - **Suspicious usage** – Type mismatches (e.g., using `number` filter on string placeholders)
 - **Missing keys** – Placeholders not found in the provided context (when `onMissing: "error"`)
 
 ### Enhanced Examples
+
+**Unknown Filter with Suggestions:**
+
+When a template references an unknown filter, the analyzer provides smart suggestions based on similar filter names:
+
+```typescript
+const report = analyze("{name|upperr}");
+
+console.log(report.messages[0]);
+// {
+//   code: "unknown-filter",
+//   message: 'Unknown filter "upperr". Did you mean "upper"?',
+//   severity: "error",
+//   range: { start: { line: 1, column: 6 }, end: { line: 1, column: 13 } },
+//   data: { filter: "upperr", suggestions: ["upper"] }
+// }
+
+// With multiple possible suggestions
+const report2 = analyze("{price|currenc:USD}");
+console.log(report2.messages[0].message);
+// → 'Unknown filter "currenc". Did you mean "currency"?'
+console.log(report2.messages[0].data.suggestions);
+// → ["currency"]
+
+// When no close matches are found
+const report3 = analyze("{text|nonexistent}");
+console.log(report3.messages[0].message);
+// → 'Unknown filter "nonexistent"'
+console.log(report3.messages[0].data.suggestions);
+// → [] (no suggestions available)
+```
+
+The `data.suggestions` field is useful for building editor integrations with autocomplete or quick-fix actions:
+
+```typescript
+// Example: Create quick-fix actions from suggestions
+const report = analyze("{name|lowr}");
+const diagnostic = report.messages.find(m => m.code === "unknown-filter");
+
+if (diagnostic?.data?.suggestions) {
+  const suggestions = diagnostic.data.suggestions as string[];
+  for (const suggestion of suggestions) {
+    console.log(`Quick fix: Replace "lowr" with "${suggestion}"`);
+  }
+}
+// → Quick fix: Replace "lowr" with "lower"
+```
 
 **Suspicious Filter Usage:**
 

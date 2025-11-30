@@ -10,6 +10,101 @@ import { hasTemplate } from './registry';
 
 export type DiagnosticCode = 'parse-error' | 'unknown-filter' | 'bad-args' | 'suspicious-filter' | 'missing-key' | 'unknown-template';
 
+/**
+ * Computes the Levenshtein distance between two strings.
+ * This measures the minimum number of single-character edits (insertions, deletions, substitutions)
+ * needed to transform one string into another.
+ * 
+ * @param a - First string
+ * @param b - Second string
+ * @returns The Levenshtein distance between the two strings
+ */
+export function levenshteinDistance(a: string, b: string): number {
+  const lenA = a.length;
+  const lenB = b.length;
+
+  // Handle edge cases
+  if (lenA === 0) return lenB;
+  if (lenB === 0) return lenA;
+
+  // Use two rows instead of full matrix for memory efficiency
+  let prevRow: number[] = Array.from({ length: lenB + 1 }, (_, i) => i);
+  let currRow: number[] = new Array<number>(lenB + 1).fill(0);
+
+  for (let i = 1; i <= lenA; i++) {
+    currRow[0] = i;
+
+    for (let j = 1; j <= lenB; j++) {
+      const cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+      // These array accesses are always within bounds due to the algorithm invariants
+      const deletion = prevRow[j]! + 1;
+      const insertion = currRow[j - 1]! + 1;
+      const substitution = prevRow[j - 1]! + cost;
+      currRow[j] = Math.min(deletion, insertion, substitution);
+    }
+
+    // Swap rows
+    [prevRow, currRow] = [currRow, prevRow];
+  }
+
+  return prevRow[lenB]!;
+}
+
+/**
+ * Generates suggestions for an unknown filter name based on available filters.
+ * Uses case-insensitive Levenshtein distance to find similar filter names.
+ * 
+ * @param unknownFilter - The unknown filter name
+ * @param availableFilters - Array of available filter names
+ * @param maxSuggestions - Maximum number of suggestions to return (default: 3)
+ * @param maxDistance - Maximum Levenshtein distance for a suggestion to be included (default: 2)
+ * @returns Array of suggested filter names, sorted by distance
+ */
+export function suggestFilters(
+  unknownFilter: string,
+  availableFilters: string[],
+  maxSuggestions = 3,
+  maxDistance = 2
+): string[] {
+  const unknownLower = unknownFilter.toLowerCase();
+  const suggestions: { name: string; distance: number }[] = [];
+
+  for (const filter of availableFilters) {
+    const distance = levenshteinDistance(unknownLower, filter.toLowerCase());
+    if (distance <= maxDistance) {
+      suggestions.push({ name: filter, distance });
+    }
+  }
+
+  // Sort by distance (ascending), then alphabetically for equal distances
+  suggestions.sort((a, b) => {
+    if (a.distance !== b.distance) return a.distance - b.distance;
+    return a.name.localeCompare(b.name);
+  });
+
+  return suggestions.slice(0, maxSuggestions).map(s => s.name);
+}
+
+/**
+ * Builds a diagnostic message for an unknown filter, including suggestions if available.
+ * 
+ * @param filterName - The unknown filter name
+ * @param suggestions - Array of suggested filter names
+ * @returns The diagnostic message string
+ */
+function buildUnknownFilterMessage(filterName: string, suggestions: string[]): string {
+  if (suggestions.length === 0) {
+    return `Unknown filter "${filterName}"`;
+  }
+  if (suggestions.length === 1) {
+    return `Unknown filter "${filterName}". Did you mean "${suggestions[0]}"?`;
+  }
+  // For 2+ suggestions: "Did you mean "x" or "y"?" or "Did you mean "x", "y", or "z"?"
+  const quoted = suggestions.map(s => `"${s}"`);
+  const last = quoted.pop()!; // Safe: we checked suggestions.length >= 2
+  return `Unknown filter "${filterName}". Did you mean ${quoted.join(', ')} or ${last}?`;
+}
+
 export interface Position {
   line: number;
   column: number;
@@ -266,14 +361,19 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
     for (const f of node.filters) {
       const fn = registry[f.name];
       if (!fn) {
+        // Generate suggestions for the unknown filter
+        const availableFilters = Object.keys(registry);
+        const suggestions = suggestFilters(f.name, availableFilters);
+        const message = buildUnknownFilterMessage(f.name, suggestions);
+
         const range = astRangeToRange(source, f.range, lineStarts);
         const posInfo = atPos(source, f.range.start, lineStarts);
         messages.push({
           code: 'unknown-filter',
-          message: `Unknown filter "${f.name}"`,
+          message,
           severity: 'error',
           range,
-          data: { filter: f.name },
+          data: { filter: f.name, suggestions },
           ...posInfo,
         });
         continue;

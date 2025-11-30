@@ -331,7 +331,9 @@ describe('analyze: enhanced diagnostics', () => {
     it('includes filter name in unknown-filter data', () => {
       const r = analyze('{x|customFilter}');
       const m = r.messages.find((x) => x.code === 'unknown-filter');
-      expect(m?.data).toEqual({ filter: 'customFilter' });
+      expect(m?.data?.filter).toBe('customFilter');
+      expect(m?.data?.suggestions).toBeDefined();
+      expect(Array.isArray(m?.data?.suggestions)).toBe(true);
     });
 
     it('includes expected/got in bad-args data', () => {
