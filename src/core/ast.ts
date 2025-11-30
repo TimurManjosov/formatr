@@ -15,7 +15,13 @@ export type PlaceholderNode = {
   range: Range; // full span from "{" to "}"
 };
 
-export type Node = TextNode | PlaceholderNode;
+export type IncludeNode = {
+  kind: 'Include';
+  name: string; // e.g., "greeting" or "layout.header"
+  range: Range; // full span from "{>" to "}"
+};
+
+export type Node = TextNode | PlaceholderNode | IncludeNode;
 
 export interface TemplateAST {
   nodes: Node[];
