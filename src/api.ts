@@ -1,9 +1,54 @@
 import { LRU } from './core/cache';
 import { compile, type CompileOptions, type Ctx } from './core/compile';
 import { parseTemplate } from './core/parser';
+import {
+  registerTemplate as _registerTemplate,
+  getTemplate,
+  clearTemplates as _clearTemplates,
+  hasTemplate,
+  listTemplates,
+} from './core/registry';
 
 const DEFAULT_CACHE_SIZE = 200;
 const compiledCache = new LRU<string, (ctx: any) => string>(DEFAULT_CACHE_SIZE);
+
+/**
+ * Clears the compiled template cache.
+ * This is automatically called when templates are registered or cleared.
+ */
+export function clearCompiledCache(): void {
+  compiledCache.clear();
+}
+
+/**
+ * Registers a reusable template by name.
+ * Also clears the compiled template cache since includes are resolved at compile time.
+ * 
+ * @param name - The template name (e.g., "greeting" or "layout.header")
+ * @param source - The template source string
+ * 
+ * @example
+ * registerTemplate("greeting", "Hello {name|upper}!");
+ * registerTemplate("layout.header", "=== {title|upper} ===");
+ */
+export function registerTemplate(name: string, source: string): void {
+  _registerTemplate(name, source);
+  // Clear compiled cache since templates using this include need to be recompiled
+  compiledCache.clear();
+}
+
+/**
+ * Clears all registered templates from the registry.
+ * Also clears the compiled template cache.
+ * Useful for testing or resetting state.
+ */
+export function clearTemplates(): void {
+  _clearTemplates();
+  compiledCache.clear();
+}
+
+// Re-export other registry functions
+export { getTemplate, hasTemplate, listTemplates };
 
 function makeCacheKey(source: string, options: CompileOptions): string {
   // Only include options that affect compilation output/behavior

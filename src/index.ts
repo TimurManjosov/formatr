@@ -10,3 +10,4 @@ export type {
   Position,
   Range
 } from './core/analyze';
+export type { IncludeNode } from './core/ast';

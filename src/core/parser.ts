@@ -5,9 +5,16 @@ import { FormatrError } from './errors';
 
 const ID_START = /[A-Za-z_]/;
 const ID_CONT = /[A-Za-z0-9_]/;
+const WHITESPACE = /[ \t]/;
 
 function makeRange(start: number, end: number): Range {
   return { start, end };
+}
+
+function skipWhitespace(source: string, iRef: { i: number }): void {
+  while (iRef.i < source.length && WHITESPACE.test(source[iRef.i] ?? '')) {
+    iRef.i++;
+  }
 }
 
 function readIdentifier(source: string, iRef: { i: number }): string {
@@ -181,6 +188,48 @@ export function parseTemplate(source: string): TemplateAST {
         pushTextIfAny(i);
         nodes.push({ kind: 'Text', value: '{', range: makeRange(i, i + 2) });
         i += 2;
+        textStart = i;
+        continue;
+      }
+
+      // Include: {> templateName}
+      if (source[i + 1] === '>') {
+        pushTextIfAny(i);
+        const includeStart = i; // includes '{'
+        i += 2; // consume '{>'
+
+        // Read template name (identifier with dots)
+        const iRef = { i };
+        skipWhitespace(source, iRef);
+        
+        // Check for empty include name
+        if (source[iRef.i] === '}' || iRef.i >= source.length) {
+          throw new FormatrError('Include requires a template name', iRef.i);
+        }
+        
+        // Read name segments joined by dots
+        const nameParts: string[] = [];
+        nameParts.push(readIdentifier(source, iRef));
+        while (source[iRef.i] === '.') {
+          iRef.i++; // skip '.'
+          nameParts.push(readIdentifier(source, iRef));
+        }
+        const name = nameParts.join('.');
+        
+        skipWhitespace(source, iRef);
+
+        if (source[iRef.i] !== '}') {
+          throw new FormatrError(`Expected '}' to close include for "${name}"`, iRef.i);
+        }
+        i = iRef.i + 1; // consume '}'
+        const includeEnd = i;
+
+        nodes.push({
+          kind: 'Include',
+          name,
+          range: makeRange(includeStart, includeEnd),
+        });
+
         textStart = i;
         continue;
       }
