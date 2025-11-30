@@ -72,7 +72,7 @@ describe('Template includes / partials', () => {
       registerTemplate('test', 'Content');
       const t1 = template('{> test }');
       const t2 = template('{>  test  }');
-      const t3 = template('{>	test	}'); // tabs
+      const t3 = template('{>\ttest\t}'); // tabs
       expect(t1({})).toBe('Content');
       expect(t2({})).toBe('Content');
       expect(t3({})).toBe('Content');
@@ -150,19 +150,19 @@ describe('Template includes / partials', () => {
       registerTemplate('a', '{> b}');
       registerTemplate('b', '{> a}');
       expect(() => template('{> a}')({})).toThrow(FormatrError);
-      expect(() => template('{> a}')({})).toThrow(/Circular include/);
+      expect(() => template('{> a}')({})).toThrow(/Circular include detected: a → b → a/);
     });
 
     it('detects self-referential includes', () => {
       registerTemplate('self', 'Before {> self} After');
-      expect(() => template('{> self}')({})).toThrow(/Circular include/);
+      expect(() => template('{> self}')({})).toThrow(/Circular include detected: self → self/);
     });
 
     it('detects circular includes in deep nesting', () => {
       registerTemplate('x', '{> y}');
       registerTemplate('y', '{> z}');
       registerTemplate('z', '{> x}');
-      expect(() => template('{> x}')({})).toThrow(/Circular include/);
+      expect(() => template('{> x}')({})).toThrow(/Circular include detected: x → y → z → x/);
     });
   });
 

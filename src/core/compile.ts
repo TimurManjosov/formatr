@@ -63,9 +63,9 @@ function mergeParts(rawParts: Part[]): Part[] {
 
 /**
  * Expands include nodes by replacing them with the nodes from the included template.
- * Uses a Set to track visited templates and prevent infinite recursion.
+ * Uses an array to track the include chain and prevent infinite recursion.
  */
-function expandIncludes(nodes: Node[], visited: Set<string>): Node[] {
+function expandIncludes(nodes: Node[], includeChain: string[]): Node[] {
   const expanded: Node[] = [];
   
   for (const node of nodes) {
@@ -73,8 +73,9 @@ function expandIncludes(nodes: Node[], visited: Set<string>): Node[] {
       const templateName = node.name;
       
       // Check for circular includes
-      if (visited.has(templateName)) {
-        throw new FormatrError(`Circular include detected: "${templateName}"`);
+      if (includeChain.includes(templateName)) {
+        const chain = [...includeChain, templateName].join(' → ');
+        throw new FormatrError(`Circular include detected: ${chain}`);
       }
       
       // Get the template source from the registry
@@ -87,9 +88,7 @@ function expandIncludes(nodes: Node[], visited: Set<string>): Node[] {
       const includedAst = parseTemplate(templateSource);
       
       // Recursively expand includes in the included template
-      const newVisited = new Set(visited);
-      newVisited.add(templateName);
-      const expandedNodes = expandIncludes(includedAst.nodes, newVisited);
+      const expandedNodes = expandIncludes(includedAst.nodes, [...includeChain, templateName]);
       
       // Add all nodes from the included template
       expanded.push(...expandedNodes);
@@ -112,12 +111,13 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
   };
 
   // Expand includes first (this resolves all {> name} to their actual content)
-  const expandedNodes = expandIncludes(ast.nodes, new Set());
+  const expandedNodes = expandIncludes(ast.nodes, []);
 
   // Pre-resolve filters per placeholder at compile time
   const rawParts: Part[] = expandedNodes.map((n) => {
     if (n.kind === 'Text') return { type: 'text', value: n.value };
-    // After expansion, there should be no Include nodes left
+    // Defensive check: After expansion, there should be no Include nodes left.
+    // This safeguard catches potential bugs in the expansion logic.
     if (n.kind === 'Include') {
       throw new FormatrError(`Unexpected include node after expansion: "${n.name}"`);
     }

@@ -5,9 +5,16 @@ import { FormatrError } from './errors';
 
 const ID_START = /[A-Za-z_]/;
 const ID_CONT = /[A-Za-z0-9_]/;
+const WHITESPACE = /[ \t]/;
 
 function makeRange(start: number, end: number): Range {
   return { start, end };
+}
+
+function skipWhitespace(source: string, iRef: { i: number }): void {
+  while (iRef.i < source.length && WHITESPACE.test(source[iRef.i] ?? '')) {
+    iRef.i++;
+  }
 }
 
 function readIdentifier(source: string, iRef: { i: number }): string {
@@ -191,11 +198,9 @@ export function parseTemplate(source: string): TemplateAST {
         const includeStart = i; // includes '{'
         i += 2; // consume '{>'
 
-        // Skip whitespace
-        while (i < source.length && (source[i] === ' ' || source[i] === '\t')) i++;
-
         // Read template name (identifier with dots)
         const iRef = { i };
+        skipWhitespace(source, iRef);
         
         // Check for empty include name
         if (source[iRef.i] === '}' || iRef.i >= source.length) {
@@ -211,8 +216,7 @@ export function parseTemplate(source: string): TemplateAST {
         }
         const name = nameParts.join('.');
         
-        // Skip trailing whitespace
-        while (iRef.i < source.length && (source[iRef.i] === ' ' || source[iRef.i] === '\t')) iRef.i++;
+        skipWhitespace(source, iRef);
 
         if (source[iRef.i] !== '}') {
           throw new FormatrError(`Expected '}' to close include for "${name}"`, iRef.i);
