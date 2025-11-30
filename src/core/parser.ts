@@ -34,27 +34,112 @@ function readPath(source: string, iRef: { i: number }): string[] {
 }
 
 /**
+ * Reads a quoted string starting at iRef.i (which must be '"' or "'").
+ * Handles escape sequences: \", \', \\, \,, \:
+ * Returns the string content (without quotes) and advances iRef.i past the closing quote.
+ */
+function readQuotedString(source: string, iRef: { i: number }): string {
+  const quoteChar = source[iRef.i];
+  const startPos = iRef.i;
+  iRef.i++; // skip opening quote
+
+  let result = '';
+
+  while (iRef.i < source.length) {
+    const ch = source[iRef.i];
+
+    if (ch === quoteChar) {
+      iRef.i++; // skip closing quote
+      return result;
+    }
+
+    if (ch === '\\') {
+      iRef.i++; // skip backslash
+      if (iRef.i >= source.length) {
+        throw new FormatrError('Unexpected end of input in escape sequence', iRef.i);
+      }
+      const escaped = source[iRef.i];
+      if (escaped === '"' || escaped === "'" || escaped === '\\' || escaped === ',' || escaped === ':') {
+        result += escaped;
+      } else {
+        throw new FormatrError(`Invalid escape sequence: \\${escaped}`, iRef.i - 1);
+      }
+      iRef.i++;
+      continue;
+    }
+
+    result += ch;
+    iRef.i++;
+  }
+
+  // Reached end of source without finding closing quote
+  throw new FormatrError('Unterminated string', startPos);
+}
+
+/**
  * Reads optional filter args of the form:
  *   ":" <arg> ("," <arg>)*
- * Arg is a run of characters up to ',', '|', or '}' (no escaping in v0.2.x).
+ * Args can be:
+ *   - Quoted strings: "..." or '...' (can contain commas, colons, etc.)
+ *   - Unquoted: run of characters up to ',', '|', or '}'
+ * Supports escape sequences inside quoted strings: \", \', \\, \,, \:
  * Leaves iRef.i positioned at the same place as before (either ':' consumed fully or not present).
  */
 function readFilterArgs(source: string, iRef: { i: number }): string[] {
   const args: string[] = [];
   if (source[iRef.i] === ':') {
     iRef.i++; // skip ':'
-    let argStart = iRef.i;
+
+    let expectingArg = true; // Track if we're expecting an argument after a comma
+
     while (iRef.i < source.length && source[iRef.i] !== '}' && source[iRef.i] !== '|') {
-      if (source[iRef.i] === ',') {
-        args.push(source.slice(argStart, iRef.i).trim());
+      const ch = source[iRef.i];
+
+      if (ch === '"' || ch === "'") {
+        // Read quoted string
+        const quotedArg = readQuotedString(source, iRef);
+        args.push(quotedArg);
+        expectingArg = false;
+
+        // Check for comma separator
+        if (source[iRef.i] === ',') {
+          iRef.i++; // skip ','
+          expectingArg = true;
+        }
+      } else if (ch === ',') {
+        // Comma found - if we were expecting an arg, push empty string for backwards compat
+        if (expectingArg) {
+          args.push('');
+        }
         iRef.i++; // skip ','
-        argStart = iRef.i;
-        continue;
+        expectingArg = true;
+      } else {
+        // Read unquoted argument (until comma, '|', or '}')
+        const argStart = iRef.i;
+        while (
+          iRef.i < source.length &&
+          source[iRef.i] !== ',' &&
+          source[iRef.i] !== '}' &&
+          source[iRef.i] !== '|'
+        ) {
+          iRef.i++;
+        }
+        const arg = source.slice(argStart, iRef.i).trim();
+        args.push(arg);
+        expectingArg = false;
+
+        // Check for comma separator
+        if (source[iRef.i] === ',') {
+          iRef.i++; // skip ','
+          expectingArg = true;
+        }
       }
-      iRef.i++;
     }
-    // push last segment (may be empty string if ':' at end — we accept then trim)
-    args.push(source.slice(argStart, iRef.i).trim());
+
+    // Handle trailing comma - push empty string for backwards compat
+    if (expectingArg && args.length > 0) {
+      args.push('');
+    }
   }
   return args;
 }
