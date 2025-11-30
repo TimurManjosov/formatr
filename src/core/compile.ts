@@ -1,7 +1,9 @@
 import type { Filter } from '../filters';
 import { builtinFilters, makeIntlFilters } from '../filters';
-import type { TemplateAST } from './ast';
+import type { Node, TemplateAST } from './ast';
 import { FormatrError } from './errors';
+import { parseTemplate } from './parser';
+import { getTemplate } from './registry';
 
 export type Ctx = Record<string, unknown>;
 export type MissingHandler = 'error' | 'keep' | ((key: string) => string);
@@ -59,6 +61,46 @@ function mergeParts(rawParts: Part[]): Part[] {
   return merged;
 }
 
+/**
+ * Expands include nodes by replacing them with the nodes from the included template.
+ * Uses a Set to track visited templates and prevent infinite recursion.
+ */
+function expandIncludes(nodes: Node[], visited: Set<string>): Node[] {
+  const expanded: Node[] = [];
+  
+  for (const node of nodes) {
+    if (node.kind === 'Include') {
+      const templateName = node.name;
+      
+      // Check for circular includes
+      if (visited.has(templateName)) {
+        throw new FormatrError(`Circular include detected: "${templateName}"`);
+      }
+      
+      // Get the template source from the registry
+      const templateSource = getTemplate(templateName);
+      if (templateSource === undefined) {
+        throw new FormatrError(`Unknown template "${templateName}"`);
+      }
+      
+      // Parse the included template
+      const includedAst = parseTemplate(templateSource);
+      
+      // Recursively expand includes in the included template
+      const newVisited = new Set(visited);
+      newVisited.add(templateName);
+      const expandedNodes = expandIncludes(includedAst.nodes, newVisited);
+      
+      // Add all nodes from the included template
+      expanded.push(...expandedNodes);
+    } else {
+      expanded.push(node);
+    }
+  }
+  
+  return expanded;
+}
+
 export function compile(ast: TemplateAST, options: CompileOptions = {}) {
   const onMissing = options.onMissing ?? 'keep';
   const strictKeys = options.strictKeys ?? false;
@@ -69,9 +111,16 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
     ...(options.filters ?? {}),
   };
 
+  // Expand includes first (this resolves all {> name} to their actual content)
+  const expandedNodes = expandIncludes(ast.nodes, new Set());
+
   // Pre-resolve filters per placeholder at compile time
-  const rawParts: Part[] = ast.nodes.map((n) => {
+  const rawParts: Part[] = expandedNodes.map((n) => {
     if (n.kind === 'Text') return { type: 'text', value: n.value };
+    // After expansion, there should be no Include nodes left
+    if (n.kind === 'Include') {
+      throw new FormatrError(`Unexpected include node after expansion: "${n.name}"`);
+    }
     let resolved: ResolvedFilter[] | undefined;
     if (n.filters && n.filters.length) {
       resolved = n.filters.map((f) => {

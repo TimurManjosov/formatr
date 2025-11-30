@@ -185,6 +185,51 @@ export function parseTemplate(source: string): TemplateAST {
         continue;
       }
 
+      // Include: {> templateName}
+      if (source[i + 1] === '>') {
+        pushTextIfAny(i);
+        const includeStart = i; // includes '{'
+        i += 2; // consume '{>'
+
+        // Skip whitespace
+        while (i < source.length && (source[i] === ' ' || source[i] === '\t')) i++;
+
+        // Read template name (identifier with dots)
+        const iRef = { i };
+        
+        // Check for empty include name
+        if (source[iRef.i] === '}' || iRef.i >= source.length) {
+          throw new FormatrError('Include requires a template name', iRef.i);
+        }
+        
+        // Read name segments joined by dots
+        const nameParts: string[] = [];
+        nameParts.push(readIdentifier(source, iRef));
+        while (source[iRef.i] === '.') {
+          iRef.i++; // skip '.'
+          nameParts.push(readIdentifier(source, iRef));
+        }
+        const name = nameParts.join('.');
+        
+        // Skip trailing whitespace
+        while (iRef.i < source.length && (source[iRef.i] === ' ' || source[iRef.i] === '\t')) iRef.i++;
+
+        if (source[iRef.i] !== '}') {
+          throw new FormatrError(`Expected '}' to close include for "${name}"`, iRef.i);
+        }
+        i = iRef.i + 1; // consume '}'
+        const includeEnd = i;
+
+        nodes.push({
+          kind: 'Include',
+          name,
+          range: makeRange(includeStart, includeEnd),
+        });
+
+        textStart = i;
+        continue;
+      }
+
       // Placeholder
       pushTextIfAny(i);
       const phStart = i; // includes '{'

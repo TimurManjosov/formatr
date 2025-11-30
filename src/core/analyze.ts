@@ -6,8 +6,9 @@ import type { TemplateAST } from './ast';
 import { FormatrError } from './errors';
 import { parseTemplate } from './parser';
 import { buildLineStarts, indexToLineCol } from './position';
+import { hasTemplate } from './registry';
 
-export type DiagnosticCode = 'parse-error' | 'unknown-filter' | 'bad-args' | 'suspicious-filter' | 'missing-key';
+export type DiagnosticCode = 'parse-error' | 'unknown-filter' | 'bad-args' | 'suspicious-filter' | 'missing-key' | 'unknown-template';
 
 export interface Position {
   line: number;
@@ -237,6 +238,24 @@ export function analyze(source: string, options: AnalyzeOptions = {}): AnalysisR
             ...posInfo,
           });
         }
+      }
+    }
+  }
+
+  // Check for unknown templates in include nodes
+  for (const node of ast.nodes) {
+    if (node.kind === 'Include') {
+      if (!hasTemplate(node.name)) {
+        const range = astRangeToRange(source, node.range, lineStarts);
+        const posInfo = atPos(source, node.range.start, lineStarts);
+        messages.push({
+          code: 'unknown-template',
+          message: `Unknown template "${node.name}"`,
+          severity: 'error',
+          range,
+          data: { template: node.name },
+          ...posInfo,
+        });
       }
     }
   }
