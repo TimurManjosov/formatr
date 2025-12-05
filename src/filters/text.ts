@@ -1,3 +1,5 @@
+import { getWasmInstance } from '../wasm/index';
+
 export type Filter = (value: unknown, ...args: string[]) => unknown;
 
 // Text Helpers
@@ -9,6 +11,8 @@ export type Filter = (value: unknown, ...args: string[]) => unknown;
  * This ensures consistent behavior with all input types including null, undefined,
  * numbers, objects, and arrays.
  * 
+ * Uses WASM implementation if available for better performance.
+ * 
  * @param v - Any value (will be coerced to string)
  * @returns Uppercase string representation of the input
  * 
@@ -19,7 +23,19 @@ export type Filter = (value: unknown, ...args: string[]) => unknown;
  * upper([1,2,3]) // => '1,2,3'
  * ```
  */
-export const upper: Filter = (v) => String(v).toUpperCase();
+export const upper: Filter = (v) => {
+  const str = String(v);
+  const wasm = getWasmInstance();
+  if (wasm) {
+    try {
+      return wasm.toUpperCase(str);
+    } catch {
+      // Fall back to JS if WASM fails
+      return str.toUpperCase();
+    }
+  }
+  return str.toUpperCase();
+};
 
 /**
  * Converts the input value to lowercase.
@@ -27,6 +43,8 @@ export const upper: Filter = (v) => String(v).toUpperCase();
  * The value is coerced to a string using `String(value)` before transformation.
  * This ensures consistent behavior with all input types including null, undefined,
  * numbers, objects, and arrays.
+ * 
+ * Uses WASM implementation if available for better performance.
  * 
  * @param v - Any value (will be coerced to string)
  * @returns Lowercase string representation of the input
@@ -38,13 +56,27 @@ export const upper: Filter = (v) => String(v).toUpperCase();
  * lower({ obj: true }) // => '[object object]'
  * ```
  */
-export const lower: Filter = (v) => String(v).toLowerCase();
+export const lower: Filter = (v) => {
+  const str = String(v);
+  const wasm = getWasmInstance();
+  if (wasm) {
+    try {
+      return wasm.toLowerCase(str);
+    } catch {
+      // Fall back to JS if WASM fails
+      return str.toLowerCase();
+    }
+  }
+  return str.toLowerCase();
+};
 
 /**
  * Trims leading and trailing whitespace from the input value.
  * 
  * The value is coerced to a string using `String(value)` before trimming.
  * This ensures consistent behavior with all input types.
+ * 
+ * Uses WASM implementation if available for better performance.
  * 
  * @param v - Any value (will be coerced to string)
  * @returns Trimmed string representation of the input
@@ -55,7 +87,19 @@ export const lower: Filter = (v) => String(v).toLowerCase();
  * trim(42) // => '42'
  * ```
  */
-export const trim: Filter = (v) => String(v).trim();
+export const trim: Filter = (v) => {
+  const str = String(v);
+  const wasm = getWasmInstance();
+  if (wasm) {
+    try {
+      return wasm.trim(str);
+    } catch {
+      // Fall back to JS if WASM fails
+      return str.trim();
+    }
+  }
+  return str.trim();
+};
 
 /**
  * Returns the singular or plural form of a word based on a numeric count.
