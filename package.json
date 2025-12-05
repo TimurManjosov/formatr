@@ -49,11 +49,5 @@
   "repository": "github:TimurManjosov/formatr",
   "sideEffects": false,
   "lint": "eslint . --ext .ts",
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": "./build/release.js",
-      "types": "./build/release.d.ts"
-    }
-  }
+  "type": "module"
 }

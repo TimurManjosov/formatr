@@ -1,10 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script type="module">
-import { add } from "./build/release.js";
-document.body.innerText = add(1, 2);
-</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>formatr WASM Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .demo {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+    .result {
+      font-weight: bold;
+      color: #0066cc;
+    }
+  </style>
 </head>
-<body></body>
+<body>
+  <h1>formatr WebAssembly Backend Demo</h1>
+  <p>This page demonstrates the optional WASM backend for the formatr library.</p>
+  
+  <div class="demo">
+    <h2>WASM Status</h2>
+    <p id="wasm-status">Loading...</p>
+  </div>
+  
+  <div class="demo">
+    <h2>Template Rendering</h2>
+    <p>Template: <code>{"{name|upper}"}</code></p>
+    <p>Input: <code>{"{ name: 'alice' }"}</code></p>
+    <p class="result" id="result">Computing...</p>
+  </div>
+  
+  <script type="module">
+    // Import from built distribution
+    import { template, initWasm, isWasmEnabled } from './dist/index.js';
+    
+    // Initialize WASM
+    await initWasm();
+    
+    // Show WASM status
+    document.getElementById('wasm-status').textContent = 
+      isWasmEnabled() ? '✓ WASM backend enabled' : '✗ Using JavaScript backend';
+    
+    // Render a template
+    const t = template('{name|upper}');
+    const result = t({ name: 'alice' });
+    
+    document.getElementById('result').textContent = `Result: "${result}"`;
+  </script>
+</body>
 </html>

@@ -69,33 +69,17 @@ async function loadInNode(): Promise<WebAssembly.Module> {
 async function loadInBrowser(): Promise<WebAssembly.Module> {
   // Try multiple strategies to load WASM
   
-  // Strategy 1: Use import.meta.url if available
-  const g = globalThis as any;
-  if (typeof g['import'] !== 'undefined' && 
-      typeof g['import']['meta'] !== 'undefined' && 
-      typeof g['import']['meta']['url'] === 'string') {
-    try {
-      const wasmUrl = new URL('../../build/release.wasm', g['import']['meta']['url']);
-      const response = await fetch(wasmUrl);
-      if (response.ok) {
-        return await WebAssembly.compileStreaming(response);
-      }
-    } catch {
-      // Fall through to next strategy
-    }
-  }
-  
-  // Strategy 2: Try relative path from document base
+  // Strategy 1: Try relative path from document base
   try {
     const response = await fetch('./build/release.wasm');
     if (response.ok) {
       return await WebAssembly.compile(await response.arrayBuffer());
     }
   } catch {
-    // Fall through to error
+    // Fall through to next strategy
   }
   
-  // Strategy 3: Try from root
+  // Strategy 2: Try from root
   try {
     const response = await fetch('/build/release.wasm');
     if (response.ok) {
