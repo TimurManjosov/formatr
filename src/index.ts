@@ -11,3 +11,7 @@ export type {
   Range
 } from './core/analyze';
 export type { IncludeNode } from './core/ast';
+
+// WebAssembly Backend API
+export { initWasm, isWasmEnabled, disableWasm, enableWasm } from './wasm/index';
+export type { WasmExports } from './wasm/types';

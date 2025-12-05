@@ -9,17 +9,22 @@
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "build/release.wasm"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --dts --format cjs,esm",
+    "build": "npm run asbuild && tsup src/index.ts --dts --format cjs,esm",
     "test": "vitest run",
     "dev": "vitest",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
     "check": "pnpm lint && pnpm test && pnpm build",
     "bench": "tsx bench/render.bench.ts",
-    "examples": "tsx examples/basic.ts && tsx examples/intl.ts && tsx examples/cli-logging.ts && tsx examples/email-templates.ts && tsx examples/i18n.ts && tsx examples/form-validation.ts && tsx examples/custom-filters.ts && tsx examples/api-responses.ts"
+    "examples": "tsx examples/basic.ts && tsx examples/intl.ts && tsx examples/cli-logging.ts && tsx examples/email-templates.ts && tsx examples/i18n.ts && tsx examples/form-validation.ts && tsx examples/custom-filters.ts && tsx examples/api-responses.ts",
+    "asbuild:debug": "asc assembly/index.ts --target debug",
+    "asbuild:release": "asc assembly/index.ts --target release",
+    "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+    "start": "npx serve ."
   },
   "keywords": [],
   "author": "",
@@ -30,6 +35,7 @@
     "@types/node": "^24.7.1",
     "@typescript-eslint/eslint-plugin": "^8.46.0",
     "@typescript-eslint/parser": "^8.46.0",
+    "assemblyscript": "^0.28.9",
     "eslint": "^9",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
@@ -42,5 +48,12 @@
   },
   "repository": "github:TimurManjosov/formatr",
   "sideEffects": false,
-  "lint": "eslint . --ext .ts"
+  "lint": "eslint . --ext .ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
+  }
 }

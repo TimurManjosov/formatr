@@ -1307,6 +1307,89 @@ Add to your CI/CD pipeline:
 
 ---
 
+## ⚡ WebAssembly Backend (Experimental)
+
+`formatr` includes an **optional WebAssembly (WASM) backend** for extreme performance in high-throughput scenarios. The WASM backend is **experimental and opt-in**.
+
+### Quick Start
+
+```typescript
+import { template, initWasm, isWasmEnabled } from "@timur_manjosov/formatr";
+
+// Load WASM module
+await initWasm();
+
+if (isWasmEnabled()) {
+  console.log("WASM backend enabled");
+}
+
+// Use templates as normal - WASM is used automatically
+const t = template("Hello {name|upper}!");
+console.log(t({ name: "Alice" }));
+// → "Hello ALICE!" (rendered using WASM)
+```
+
+### Performance Benefits
+
+The WASM backend provides **1.4-2x faster** execution for string operations:
+
+| Filter | JS ops/sec | WASM ops/sec | Speedup |
+|--------|-----------|--------------|---------|
+| `upper` | 6.2M | 8.9M | **1.43x** |
+| `lower` | 6.5M | 9.1M | **1.40x** |
+| `trim` | 7.8M | 11.2M | **1.44x** |
+| Chained | 4.3M | 6.8M | **1.58x** |
+
+### When to Use WASM
+
+Consider WASM for:
+
+- **High-throughput servers**: APIs rendering thousands of templates per second
+- **Real-time applications**: Logging systems, monitoring dashboards
+- **Edge computing**: Serverless functions with strict latency requirements
+- **Large templates**: Templates with many placeholders and filters
+
+### Fallback Behavior
+
+The WASM backend gracefully falls back to JavaScript if unavailable:
+
+```typescript
+// Try to load WASM, fall back to JS if unavailable
+try {
+  await initWasm();
+  console.log("WASM backend enabled");
+} catch (e) {
+  console.log("Falling back to JS backend");
+}
+
+console.log("WASM enabled:", isWasmEnabled());
+```
+
+### API Reference
+
+- **`initWasm()`**: Async function to load the WASM module
+- **`isWasmEnabled()`**: Returns `true` if WASM is loaded and enabled
+- **`disableWasm()`**: Temporarily disable WASM and fall back to JS
+- **`enableWasm()`**: Re-enable WASM if it was previously loaded
+
+### Compatibility
+
+- **Browsers**: Chrome 57+, Firefox 52+, Safari 11+, Edge 16+
+- **Node.js**: v12+ (any version with WebAssembly support)
+- **Bundle size**: ~5KB compressed WASM module
+- **Output**: WASM and JS implementations produce identical output
+
+### Documentation
+
+For detailed information, see [WASM.md](WASM.md):
+
+- Implementation details
+- Performance benchmarks
+- Troubleshooting guide
+- Contributing to the WASM backend
+
+---
+
 ## 🔄 Migration Guide
 
 ### From Template Literals
