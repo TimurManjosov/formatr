@@ -6,5 +6,5 @@ assert.strictEqual(toUpperCase("hello"), "HELLO");
 assert.strictEqual(toLowerCase("WORLD"), "world");
 assert.strictEqual(trim("  test  "), "test");
 
-console.log("✓ WASM module tests passed");
+// If we got here, all assertions passed
 

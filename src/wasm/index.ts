@@ -61,7 +61,7 @@ export async function initWasm(): Promise<void> {
       // Instantiate with minimal imports
       const instance = await WebAssembly.instantiate(wasmModule, {
         env: {
-          abort: (msg: number, file: number, line: number, column: number) => {
+          abort: () => {
             // Silently handle aborts - they're internal WASM operations
             // Only log if there's a real error condition
           }
