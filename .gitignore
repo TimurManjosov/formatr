@@ -6,3 +6,5 @@ coverage
 build/*.wat
 build/*.map
 build/debug.wasm
+playground/dist
+playground/node_modules

@@ -13,6 +13,8 @@ A tiny, type‑safe templating engine that combines placeholders, filters, inter
 
 [Features](#-features) • [Installation](#-installation) • [Quickstart](#-quickstart) • [API](#-api) • [Contributing](#-contributing)
 
+**[🎮 Try the Interactive Playground →](https://timurmanjosov.github.io/formatr/)**
+
 </div>
 
 ---
