@@ -44,7 +44,7 @@ const examples = {
   },
   combined: {
     name: "Combined Example",
-    template: "Hello {name|upper}!\\nYou have {count|plural:message,messages} totaling {price|currency:USD}.",
+    template: "Hello {name|upper}!\nYou have {count|plural:message,messages} totaling {price|currency:USD}.",
     context: '{\n  "name": "Alice",\n  "count": 5,\n  "price": 99.99\n}',
   },
 };
@@ -80,9 +80,9 @@ function App() {
     const timer = setTimeout(() => {
       try {
         // Parse context JSON
-        let ctx: any;
+        let ctx: Record<string, unknown>;
         try {
-          ctx = JSON.parse(contextJSON);
+          ctx = JSON.parse(contextJSON) as Record<string, unknown>;
           setContextError("");
         } catch (e) {
           setContextError(`Invalid JSON: ${(e as Error).message}`);
