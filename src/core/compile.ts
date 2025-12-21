@@ -1,7 +1,7 @@
-import type { Filter } from '../filters';
+import type { Filter, AsyncFilter, SyncOrAsyncFilter } from '../filters';
 import { builtinFilters, makeIntlFilters } from '../filters';
 import type { Node, TemplateAST } from './ast';
-import { FormatrError } from './errors';
+import { FormatrError, FilterExecutionError } from './errors';
 import { parseTemplate } from './parser';
 import { getTemplate } from './registry';
 
@@ -10,17 +10,17 @@ export type MissingHandler = 'error' | 'keep' | ((key: string) => string);
 
 export interface CompileOptions {
   onMissing?: MissingHandler;
-  filters?: Record<string, Filter>;
+  filters?: Record<string, SyncOrAsyncFilter>;
   locale?: string;
   // new:
   cacheSize?: number; // default 200 (0 disables)
   strictKeys?: boolean; // enforce key presence at render time
 }
 
-type ResolvedFilter = { fn: Filter; args: string[] };
+type ResolvedFilter = { fn: SyncOrAsyncFilter; args: string[]; isAsync: boolean; name: string };
 type Part =
   | { type: 'text'; value: string }
-  | { type: 'ph'; path: string[]; keyStr: string; filters?: ResolvedFilter[] };
+  | { type: 'ph'; path: string[]; keyStr: string; filters?: ResolvedFilter[]; hasAsync?: boolean };
 
 // Safe traversal with early exit
 function getPathValue(obj: unknown, path: string[]): { found: boolean; value?: unknown } {
@@ -32,6 +32,15 @@ function getPathValue(obj: unknown, path: string[]): { found: boolean; value?: u
     cur = cur[seg];
   }
   return cur === undefined ? { found: false } : { found: true, value: cur };
+}
+
+/**
+ * Detects if a filter function is async (returns a Promise).
+ * Checks for AsyncFunction constructor or Promise-returning behavior.
+ */
+function isAsyncFilter(fn: SyncOrAsyncFilter): boolean {
+  // Check if it's an async function
+  return fn.constructor.name === 'AsyncFunction';
 }
 
 /**
@@ -104,7 +113,7 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
   const onMissing = options.onMissing ?? 'keep';
   const strictKeys = options.strictKeys ?? false;
 
-  const registry: Record<string, Filter> = {
+  const registry: Record<string, SyncOrAsyncFilter> = {
     ...builtinFilters,
     ...makeIntlFilters(options.locale),
     ...(options.filters ?? {}),
@@ -122,17 +131,20 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
       throw new FormatrError(`Unexpected include node after expansion: "${n.name}"`);
     }
     let resolved: ResolvedFilter[] | undefined;
+    let hasAsync = false;
     if (n.filters && n.filters.length) {
       resolved = n.filters.map((f) => {
         const fn = registry[f.name];
         if (!fn) throw new FormatrError(`Unknown filter "${f.name}"`);
-        return { fn, args: f.args ?? [] };
+        const async = isAsyncFilter(fn);
+        if (async) hasAsync = true;
+        return { fn, args: f.args ?? [], isAsync: async, name: f.name };
       });
     }
     // Pre-compute keyStr at compile time to avoid join() at render time
     const keyStr = n.path.join('.');
     return resolved && resolved.length
-      ? { type: 'ph', path: n.path, keyStr, filters: resolved }
+      ? { type: 'ph', path: n.path, keyStr, filters: resolved, hasAsync }
       : { type: 'ph', path: n.path, keyStr };
   });
 
@@ -167,6 +179,14 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
         continue;
       }
 
+      // Check for async filters in sync render
+      if (p.hasAsync) {
+        throw new FormatrError(
+          `Async filters detected in template. Use renderAsync() instead of render(). ` +
+          `Placeholder "{${p.keyStr}}" contains async filters.`
+        );
+      }
+
       const { found, value } = getPathValue(ctx, p.path);
       if (!found || value == null) {
         // strictKeys takes precedence over onMissing
@@ -188,6 +208,112 @@ export function compile(ast: TemplateAST, options: CompileOptions = {}) {
       fragments.push(String(val));
     }
 
+    return fragments.join('');
+  };
+}
+
+/**
+ * Compiles a template with async filter support.
+ * Returns an async render function that can handle both sync and async filters.
+ * Independent async operations across placeholders are executed in parallel.
+ */
+export function compileAsync(ast: TemplateAST, options: CompileOptions = {}) {
+  const onMissing = options.onMissing ?? 'keep';
+  const strictKeys = options.strictKeys ?? false;
+
+  const registry: Record<string, SyncOrAsyncFilter> = {
+    ...builtinFilters,
+    ...makeIntlFilters(options.locale),
+    ...(options.filters ?? {}),
+  };
+
+  // Expand includes first
+  const expandedNodes = expandIncludes(ast.nodes, []);
+
+  // Pre-resolve filters per placeholder at compile time
+  const rawParts: Part[] = expandedNodes.map((n) => {
+    if (n.kind === 'Text') return { type: 'text', value: n.value };
+    if (n.kind === 'Include') {
+      throw new FormatrError(`Unexpected include node after expansion: "${n.name}"`);
+    }
+    let resolved: ResolvedFilter[] | undefined;
+    let hasAsync = false;
+    if (n.filters && n.filters.length) {
+      resolved = n.filters.map((f) => {
+        const fn = registry[f.name];
+        if (!fn) throw new FormatrError(`Unknown filter "${f.name}"`);
+        const async = isAsyncFilter(fn);
+        if (async) hasAsync = true;
+        return { fn, args: f.args ?? [], isAsync: async, name: f.name };
+      });
+    }
+    const keyStr = n.path.join('.');
+    return resolved && resolved.length
+      ? { type: 'ph', path: n.path, keyStr, filters: resolved, hasAsync }
+      : { type: 'ph', path: n.path, keyStr };
+  });
+
+  const parts = mergeParts(rawParts);
+
+  // Optimization: all static text
+  if (parts.length === 1) {
+    const first = parts[0];
+    if (first && first.type === 'text') {
+      const staticResult = first.value;
+      return async function renderAsync(): Promise<string> {
+        return staticResult;
+      };
+    }
+  }
+
+  // Optimization: empty template
+  if (parts.length === 0) {
+    return async function renderAsync(): Promise<string> {
+      return '';
+    };
+  }
+
+  return async function renderAsync<T extends Ctx = Ctx>(ctx: T): Promise<string> {
+    // Process all parts in parallel for better performance
+    const fragmentPromises = parts.map(async (p): Promise<string> => {
+      if (p.type === 'text') {
+        return p.value;
+      }
+
+      const { found, value } = getPathValue(ctx, p.path);
+      if (!found || value == null) {
+        if (strictKeys || onMissing === 'error') throw new FormatrError(`Missing key "${p.keyStr}"`);
+        if (onMissing === 'keep') return `{${p.keyStr}}`;
+        return onMissing(p.keyStr);
+      }
+
+      let val: unknown = value;
+      if (p.filters && p.filters.length) {
+        // Filters in a chain must be sequential
+        for (let i = 0; i < p.filters.length; i++) {
+          const rf = p.filters[i]!;
+          try {
+            if (rf.isAsync) {
+              val = await (rf.fn as AsyncFilter)(val, ...rf.args);
+            } else {
+              val = rf.fn(val, ...rf.args);
+            }
+          } catch (error) {
+            throw new FilterExecutionError(
+              `Error in filter '${rf.name}' in placeholder "{${p.keyStr}}": ${error instanceof Error ? error.message : String(error)}`,
+              rf.name,
+              val,
+              rf.args,
+              error instanceof Error ? error : new Error(String(error))
+            );
+          }
+        }
+      }
+      return String(val);
+    });
+
+    // Wait for all parts to complete (parallel execution)
+    const fragments = await Promise.all(fragmentPromises);
     return fragments.join('');
   };
 }

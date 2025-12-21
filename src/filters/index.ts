@@ -1,7 +1,7 @@
-import type { Filter } from './text';
+import type { Filter, AsyncFilter, SyncOrAsyncFilter } from './text';
 import { lower, pad, plural, replace, slice, trim, truncate, upper } from './text';
 export { makeIntlFilters } from './intl';
-export type { Filter } from './text';
+export type { Filter, AsyncFilter, SyncOrAsyncFilter } from './text';
 
 export const builtinFilters: Record<string, Filter> = {
   upper,
