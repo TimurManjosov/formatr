@@ -45,6 +45,7 @@ A tiny, type‑safe templating engine that combines placeholders, filters, inter
 - [Built-in Filters](#-built-in-filters)
 - [Filter Behavior](#-filter-behavior)
 - [Custom Filters](#-custom-filters)
+- [Async Filters](#-async-filters)
 - [Dot-Paths](#-dot-paths)
 - [Diagnostics](#-diagnostics)
 - [Advanced Topics](#-advanced-topics)
@@ -57,6 +58,7 @@ A tiny, type‑safe templating engine that combines placeholders, filters, inter
 
 - 🔒 **Typed Templates** – Type-safe placeholders tied to your context for compile-time error detection
 - 🔗 **Chainable Filters** – Transform values inline with composable filters like `|trim|upper`
+- ⚡ **Async Filters** – Fetch data from APIs, databases, or external sources with automatic parallel execution
 - 🌐 **Internationalization** – Format numbers, dates, and currencies effortlessly using `Intl` API
 - 🗺️ **Dot-Path Navigation** – Safely traverse nested objects with `{user.address.city}` syntax
 - 🧩 **Highly Customizable** – Define custom filters and reuse them across all templates
@@ -848,6 +850,139 @@ Custom filters have access to:
 - The placeholder value (first parameter)
 - Any colon-separated arguments (subsequent parameters)
 - The ability to return any value (will be converted to string in the output)
+
+---
+
+## ⚡ Async Filters
+
+`formatr` supports asynchronous filters that can fetch data from external sources like APIs, databases, or file systems. This enables data-driven templating for complex scenarios while maintaining clean template syntax.
+
+### Basic Async Filter Usage
+
+Use `templateAsync` instead of `template` to work with async filters:
+
+```typescript
+import { templateAsync } from "@timur_manjosov/formatr";
+
+const greet = templateAsync<{ userId: number }>(
+  "Hello, {userId|fetchUser|getName}!",
+  {
+    filters: {
+      fetchUser: async (id: unknown) => {
+        const response = await fetch(`https://api.example.com/users/${id}`);
+        return await response.json();
+      },
+      getName: (user: any) => user.name
+    }
+  }
+);
+
+const result = await greet({ userId: 123 });
+console.log(result);
+// → "Hello, Alice Johnson!"
+```
+
+### Mixed Sync and Async Filters
+
+You can freely mix synchronous and asynchronous filters in the same template:
+
+```typescript
+const formatter = templateAsync<{ productId: number }>(
+  "{productId|fetchProduct|formatPrice|upper}",
+  {
+    filters: {
+      // Async filter
+      fetchProduct: async (id: unknown) => {
+        const res = await fetch(`https://api.example.com/products/${id}`);
+        return await res.json();
+      },
+      // Sync filters
+      formatPrice: (product: any) => `${product.name}: $${product.price.toFixed(2)}`,
+      upper: (str: unknown) => String(str).toUpperCase()
+    }
+  }
+);
+
+const result = await formatter({ productId: 456 });
+console.log(result);
+// → "WIRELESS MOUSE: $29.99"
+```
+
+### Parallel Execution
+
+Independent async operations across different placeholders are automatically executed in parallel for optimal performance:
+
+```typescript
+const dashboard = templateAsync<{ userId: number }>(
+  "User: {userId|fetchUser|getName}\n" +
+  "Orders: {userId|fetchOrders|count}\n" +
+  "Cart: {userId|fetchCart|total}",
+  {
+    filters: {
+      fetchUser: async (id: unknown) => {
+        // These three fetches run in parallel!
+        await delay(100);
+        return getUser(id);
+      },
+      fetchOrders: async (id: unknown) => {
+        await delay(100);
+        return getOrders(id);
+      },
+      fetchCart: async (id: unknown) => {
+        await delay(100);
+        return getCart(id);
+      },
+      getName: (user: any) => user.name,
+      count: (orders: any[]) => `${orders.length} orders`,
+      total: (cart: any) => `$${cart.total}`
+    }
+  }
+);
+
+// All three fetches complete in ~100ms (parallel), not ~300ms (sequential)
+const result = await dashboard({ userId: 123 });
+```
+
+### Error Handling
+
+Async filter errors are caught and wrapped with context information:
+
+```typescript
+const template = templateAsync<{ url: string }>(
+  "Data: {url|fetchData}",
+  {
+    filters: {
+      fetchData: async (url: unknown) => {
+        const response = await fetch(String(url));
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return await response.json();
+      }
+    }
+  }
+);
+
+try {
+  await template({ url: "https://api.example.com/data" });
+} catch (error) {
+  // FilterExecutionError with context:
+  // - filterName: "fetchData"
+  // - inputValue: "https://api.example.com/data"
+  // - originalError: Error("HTTP 404")
+  console.error(`Error in filter '${error.filterName}': ${error.message}`);
+}
+```
+
+### Important Notes
+
+- Use `templateAsync()` for templates with async filters
+- Use `template()` for sync-only templates (attempts to use async filters will throw a helpful error)
+- Filters within a single chain execute sequentially (required for data flow)
+- Independent placeholders execute in parallel (for performance)
+- All built-in filters remain synchronous for backward compatibility
+
+**See [examples/async-filters.ts](examples/async-filters.ts) for complete working examples.**
 
 ---
 

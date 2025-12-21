@@ -1,5 +1,5 @@
 import { LRU } from './core/cache';
-import { compile, type CompileOptions, type Ctx } from './core/compile';
+import { compile, compileAsync, type CompileOptions, type Ctx } from './core/compile';
 import { parseTemplate } from './core/parser';
 import {
   registerTemplate as _registerTemplate,
@@ -11,6 +11,7 @@ import {
 
 const DEFAULT_CACHE_SIZE = 200;
 const compiledCache = new LRU<string, (ctx: any) => string>(DEFAULT_CACHE_SIZE);
+const compiledAsyncCache = new LRU<string, (ctx: any) => Promise<string>>(DEFAULT_CACHE_SIZE);
 
 /**
  * Clears the compiled template cache.
@@ -18,6 +19,7 @@ const compiledCache = new LRU<string, (ctx: any) => string>(DEFAULT_CACHE_SIZE);
  */
 export function clearCompiledCache(): void {
   compiledCache.clear();
+  compiledAsyncCache.clear();
 }
 
 /**
@@ -147,4 +149,64 @@ export function template<T extends Ctx = Ctx>(
   // no caching
   const ast = parseTemplate(source);
   return compile(ast, options);
+}
+
+/**
+ * Compiles a template string into a reusable async function that accepts a context object and returns a Promise of formatted string.
+ * 
+ * This function supports async filters that return Promises, allowing templates to fetch data from external sources.
+ * Independent async operations across different placeholders are executed in parallel for better performance.
+ * 
+ * @template T - The type of the context object
+ * @param source - The template string containing placeholders and filters (e.g., "Hello {name|upper}")
+ * @param options - Configuration options for the template (same as template())
+ * @returns A function that takes a context object and returns a Promise of the formatted string
+ * 
+ * @example
+ * // Basic usage with async filter
+ * const greet = templateAsync<{ userId: number }>(
+ *   "Hello {userId|fetchUser|getName}!"
+ * );
+ * const result = await greet({ userId: 123 });
+ * // → "Hello John!"
+ * 
+ * @example
+ * // Mixed sync and async filters
+ * const t = templateAsync<{ id: number }>(
+ *   "{id|fetchProduct|formatPrice|upper}"
+ * );
+ * const result = await t({ id: 456 });
+ * // → "WIRELESS MOUSE: $29.99"
+ * 
+ * @example
+ * // Multiple async operations in parallel
+ * const t = templateAsync<{ userId: number }>(
+ *   "User: {userId|fetchUser|getName}, Orders: {userId|fetchOrders|count}"
+ * );
+ * const result = await t({ userId: 123 });
+ */
+export function templateAsync<T extends Ctx = Ctx>(
+  source: string,
+  options: CompileOptions = {}
+): (ctx: T) => Promise<string> {
+  const cacheSize = options.cacheSize ?? DEFAULT_CACHE_SIZE;
+  if (cacheSize !== compiledAsyncCache['max']) {
+    (compiledAsyncCache as any).max = cacheSize;
+    if (cacheSize === 0) compiledAsyncCache.clear();
+  }
+
+  if (cacheSize > 0) {
+    const key = makeCacheKey(source, options);
+    const cached = compiledAsyncCache.get(key);
+    if (cached) return cached as (ctx: T) => Promise<string>;
+
+    const ast = parseTemplate(source);
+    const fn = compileAsync(ast, options);
+    compiledAsyncCache.set(key, fn as (ctx: any) => Promise<string>);
+    return fn as (ctx: T) => Promise<string>;
+  }
+
+  // no caching
+  const ast = parseTemplate(source);
+  return compileAsync(ast, options);
 }
