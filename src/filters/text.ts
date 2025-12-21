@@ -1,6 +1,8 @@
 import { getWasmInstance } from '../wasm/index';
 
 export type Filter = (value: unknown, ...args: string[]) => unknown;
+export type AsyncFilter = (value: unknown, ...args: string[]) => Promise<unknown>;
+export type SyncOrAsyncFilter = Filter | AsyncFilter;
 
 // Text Helpers
 
