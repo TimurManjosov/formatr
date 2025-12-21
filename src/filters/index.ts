@@ -1,3 +1,5 @@
+// Re-export filter types for external use
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Filter, AsyncFilter, SyncOrAsyncFilter } from './text';
 import { lower, pad, plural, replace, slice, trim, truncate, upper } from './text';
 export { makeIntlFilters } from './intl';

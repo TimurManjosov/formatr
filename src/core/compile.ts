@@ -1,4 +1,4 @@
-import type { Filter, AsyncFilter, SyncOrAsyncFilter } from '../filters';
+import type { AsyncFilter, SyncOrAsyncFilter } from '../filters';
 import { builtinFilters, makeIntlFilters } from '../filters';
 import type { Node, TemplateAST } from './ast';
 import { FormatrError, FilterExecutionError } from './errors';

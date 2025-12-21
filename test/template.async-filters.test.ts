@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { templateAsync, FilterExecutionError, FormatrError } from '../src';
 
 // Helper to create delays
@@ -360,6 +360,7 @@ describe('formatr: async filters', () => {
     });
 
     it('should handle empty template with async filters', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       const t = templateAsync<{}>('', {
         filters: {
           asyncFilter: async (n: unknown) => Number(n) * 2,
@@ -371,6 +372,7 @@ describe('formatr: async filters', () => {
     });
 
     it('should handle static template with async filters', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-empty-object-type
       const t = templateAsync<{}>('Static text', {
         filters: {
           asyncFilter: async (n: unknown) => Number(n) * 2,
@@ -458,11 +460,11 @@ describe('formatr: async filters', () => {
               await delay(50);
               return `User${id}`;
             },
-            fetchOrders: async (id: unknown) => {
+            fetchOrders: async () => {
               await delay(50);
               return `5 orders`;
             },
-            fetchCart: async (id: unknown) => {
+            fetchCart: async () => {
               await delay(50);
               return `$99.99`;
             },

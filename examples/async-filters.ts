@@ -84,17 +84,17 @@ const dashboardTemplate = templateAsync<{ userId: number }>(
         return userDatabase.get(Number(id));
       },
       getName: (user: any) => user?.name || 'Unknown',
-      fetchOrders: async (id: unknown) => {
+      fetchOrders: async () => {
         console.log(`  [${Date.now() % 10000}ms] Fetching orders...`);
         await delay(50);
         return `${Math.floor(Math.random() * 10) + 1} orders`;
       },
-      fetchCartTotal: async (id: unknown) => {
+      fetchCartTotal: async () => {
         console.log(`  [${Date.now() % 10000}ms] Fetching cart...`);
         await delay(50);
         return `$${(Math.random() * 200).toFixed(2)}`;
       },
-      fetchNotifications: async (id: unknown) => {
+      fetchNotifications: async () => {
         console.log(`  [${Date.now() % 10000}ms] Fetching notifications...`);
         await delay(50);
         return `${Math.floor(Math.random() * 5)} new`;
@@ -202,7 +202,7 @@ setTimeout(() => {
         getName: (user: any) => user?.name || 'Unknown',
         getEmail: (user: any) => user?.email || 'N/A',
         getRole: (user: any) => user?.role || 'N/A',
-        fetchStatus: async (id: unknown) => {
+        fetchStatus: async () => {
           await delay(40);
           return Math.random() > 0.5 ? 'Online' : 'Offline';
         },
