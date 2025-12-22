@@ -203,7 +203,7 @@ function getUnitName(unit: DurationUnit, value: number, locale: string): string 
 /**
  * Gets the unit abbreviation for short/narrow format
  */
-function getUnitAbbreviation(unit: DurationUnit, format: DurationFormat): string {
+function getUnitAbbreviation(unit: DurationUnit): string {
   const abbr: Record<DurationUnit, string> = {
     years: 'y',
     months: 'mo',

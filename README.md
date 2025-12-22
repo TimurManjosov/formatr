@@ -475,6 +475,26 @@ Integrate `analyze()` into your editor, linter, or build process for early detec
 | `currency` | `{value\|currency:USD}` | Formats as currency with specified code | `42.99` → `"$42.99"` (en-US) |
 | `date` | `{value\|date:short}` | Formats date with specified style (`short`, `medium`, `long`, `full`) | `new Date()` → `"1/15/2025"` |
 
+### 📅 Date & Time Filters (New!)
+
+`formatr` now includes advanced date and time formatting filters with full internationalization support:
+
+| Filter | Syntax | Description | Example |
+|--------|--------|-------------|---------|
+| `relativeDate` | `{date\|relativeDate}` | Formats date relative to now | `futureDate` → `"in 3 days"`, `pastDate` → `"yesterday"` |
+| `formatDate` | `{date\|formatDate:pattern}` | Custom date formatting with pattern tokens | `{date\|formatDate:yyyy-MM-dd}` → `"2025-12-20"` |
+| `timezone` | `{date\|timezone:IANA_TZ}` | Converts date to specified timezone | `{date\|timezone:America/New_York}` → `"2025-12-20 10:30:00 EST"` |
+| `duration` | `{ms\|duration}` | Formats time duration in human-readable format | `5400000` → `"1h 30m"` |
+| `timeAgo` | `{date\|timeAgo}` | Shows elapsed time since date | `recentDate` → `"15 minutes ago"`, `oldDate` → `"just now"` |
+
+**Key Features:**
+- 🌍 **Full i18n support** with `Intl` API for all locales
+- 🕐 **Timezone-aware** with IANA timezone database support
+- 📊 **Multiple formats** (narrow, short, long, colon) for durations
+- 🎯 **Smart contextual output** (e.g., "yesterday", "tomorrow", "just now")
+- ⚡ **Zero dependencies** - uses native browser/Node.js Intl APIs
+- 🌳 **Tree-shakable** - import only the filters you need
+
 ### Text Manipulation Examples
 
 The new text filters provide powerful string manipulation capabilities:
@@ -610,6 +630,49 @@ const t = template<{ count: number }>(
 );
 console.log(t({ count: 5 }));
 // → "items"
+```
+
+### Date & Time Filter Examples
+
+The new date and time filters provide powerful formatting capabilities for temporal data:
+
+```typescript
+import { template } from "@timur_manjosov/formatr";
+
+// Relative date formatting
+const postTemplate = template<{ created: Date }>(
+  "Posted {created|relativeDate}"
+);
+console.log(postTemplate({ created: new Date(Date.now() - 3600000) }));
+// → "Posted 1 hour ago"
+
+// Custom date formatting with patterns
+const eventTemplate = template<{ date: Date }>(
+  "Event: {date|formatDate:EEEE MMMM d yyyy}"
+);
+console.log(eventTemplate({ date: new Date('2025-12-20') }));
+// → "Event: Saturday December 20 2025"
+
+// Timezone conversion
+const meetingTemplate = template<{ time: Date }>(
+  "Meeting: {time|timezone:America/New_York}"
+);
+console.log(meetingTemplate({ time: new Date('2025-12-20T15:30:00Z') }));
+// → "Meeting: 2025-12-20 10:30:00 EST"
+
+// Duration formatting
+const videoTemplate = template<{ length: number }>(
+  "Duration: {length|duration}"
+);
+console.log(videoTemplate({ length: 5400000 })); // 1.5 hours in ms
+// → "Duration: 1h 30m"
+
+// Time ago with threshold
+const commentTemplate = template<{ posted: Date }>(
+  "{posted|timeAgo}"
+);
+console.log(commentTemplate({ posted: new Date(Date.now() - 900000) }));
+// → "15 minutes ago"
 ```
 
 ---
