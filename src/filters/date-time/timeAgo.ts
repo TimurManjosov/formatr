@@ -1,5 +1,6 @@
 import { parseDate, type DateInput } from './utils/dateParser';
 import { getLocale } from './utils/localeManager';
+import { UNIT_ABBREVIATIONS } from './utils/constants';
 import { formatDate } from './formatDate';
 import type { Filter } from '../text';
 
@@ -185,14 +186,5 @@ function formatTimeAgo(
  * Gets abbreviated unit name for narrow/short formats
  */
 function getUnitAbbr(unit: Intl.RelativeTimeFormatUnit): string {
-  const abbr: Record<string, string> = {
-    second: 's',
-    minute: 'm',
-    hour: 'h',
-    day: 'd',
-    week: 'w',
-    month: 'mo',
-    year: 'y',
-  };
-  return abbr[unit] || unit.charAt(0);
+  return UNIT_ABBREVIATIONS[unit] || unit.charAt(0);
 }

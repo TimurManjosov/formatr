@@ -41,6 +41,19 @@ export const DEFAULT_DURATION_UNITS: DurationUnit[] = [
 ];
 
 /**
+ * Unit abbreviations for short/narrow formats
+ */
+export const UNIT_ABBREVIATIONS: Record<string, string> = {
+  second: 's',
+  minute: 'm',
+  hour: 'h',
+  day: 'd',
+  week: 'w',
+  month: 'mo',
+  year: 'y',
+};
+
+/**
  * Format patterns for predefined date formats
  */
 export const PRESET_DATE_FORMATS: Record<string, Intl.DateTimeFormatOptions> = {

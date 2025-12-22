@@ -180,7 +180,7 @@ function formatUnitValue(value: number, unit: DurationUnit, format: DurationForm
     return `${value} ${unitName}`;
   }
 
-  const abbr = getUnitAbbreviation(unit, format);
+  const abbr = getUnitAbbreviation(unit);
   return format === 'narrow' ? `${value}${abbr}` : `${value}${abbr}`;
 }
 
@@ -192,9 +192,9 @@ function getUnitName(unit: DurationUnit, value: number, locale: string): string 
   try {
     const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always', style: 'long' });
     const formatted = rtf.format(value, unit as Intl.RelativeTimeFormatUnit);
-    // Extract just the unit name
-    const match = formatted.match(/[\p{L}]+/u);
-    return match ? match[0] : unit;
+    // Extract the unit name (words that are not digits or minus signs)
+    const words = formatted.split(/[\s,]+/).filter(word => !/^-?\d+$/.test(word));
+    return words.length > 0 ? words.join(' ') : unit;
   } catch {
     return value === 1 ? unit.slice(0, -1) : unit;
   }

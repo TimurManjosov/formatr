@@ -90,9 +90,9 @@ const TOKEN_MAP: Record<string, (date: Date, locale: string) => string> = {
       return hour < 12 ? 'AM' : 'PM';
     }
   },
-  A: (d, locale) => {
-    const aFormatter = TOKEN_MAP.a;
-    return aFormatter ? aFormatter(d, locale).toUpperCase() : 'AM';
+  A: (d) => {
+    const hour = d.getHours();
+    return hour < 12 ? 'AM' : 'PM';
   },
 };
 

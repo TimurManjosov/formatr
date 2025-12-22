@@ -85,9 +85,10 @@ export const timezone: Filter = (value: unknown, ...args: string[]) => {
 
   try {
     if (returnDate) {
-      // Return a Date object representing the same instant
-      // Note: Date objects don't have timezone info, but we can create one
-      // that will display correctly in the target timezone
+      // Note: JavaScript Date objects don't carry timezone information.
+      // This returns the same instant in time; the timezone conversion
+      // is conceptual only and would need to be tracked separately.
+      // For actual timezone conversion, use the string format option instead.
       return parsed;
     }
 
