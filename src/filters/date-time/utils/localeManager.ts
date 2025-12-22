@@ -2,8 +2,7 @@
  * Gets the locale to use for formatting, with fallback to system locale.
  * 
  * If a locale is provided, it is used directly. Otherwise, falls back to
- * the system locale (via navigator.language in browsers) or 'en-US' as
- * a final fallback for Node.js environments.
+ * a safe default of 'en-US' for consistent behavior across environments.
  * 
  * @param locale - Optional locale string (e.g., 'en-US', 'de-DE')
  * @returns The locale string to use for formatting
@@ -11,7 +10,7 @@
  * @example
  * ```typescript
  * getLocale('fr-FR') // => 'fr-FR'
- * getLocale() // => system locale or 'en-US'
+ * getLocale() // => 'en-US' (safe default)
  * ```
  */
 export function getLocale(locale?: string): string {
@@ -19,12 +18,8 @@ export function getLocale(locale?: string): string {
     return locale;
   }
 
-  // In browsers, use navigator.language
-  if (typeof navigator !== 'undefined' && navigator.language) {
-    return navigator.language;
-  }
-
-  // Fallback for Node.js or other environments
+  // Always return a safe default
+  // Don't rely on navigator.language as it's not available in all environments
   return 'en-US';
 }
 

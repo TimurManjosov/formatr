@@ -18,8 +18,20 @@ const TOKEN_MAP: Record<string, (date: Date, locale: string) => string> = {
   yy: (d) => d.getFullYear().toString().slice(-2),
 
   // Month
-  MMMM: (d, locale) => new Intl.DateTimeFormat(locale, { month: 'long' }).format(d),
-  MMM: (d, locale) => new Intl.DateTimeFormat(locale, { month: 'short' }).format(d),
+  MMMM: (d, locale) => {
+    try {
+      return new Intl.DateTimeFormat(locale || 'en-US', { month: 'long' }).format(d);
+    } catch {
+      return new Intl.DateTimeFormat('en-US', { month: 'long' }).format(d);
+    }
+  },
+  MMM: (d, locale) => {
+    try {
+      return new Intl.DateTimeFormat(locale || 'en-US', { month: 'short' }).format(d);
+    } catch {
+      return new Intl.DateTimeFormat('en-US', { month: 'short' }).format(d);
+    }
+  },
   MM: (d) => (d.getMonth() + 1).toString().padStart(2, '0'),
   M: (d) => (d.getMonth() + 1).toString(),
 
@@ -28,8 +40,20 @@ const TOKEN_MAP: Record<string, (date: Date, locale: string) => string> = {
   d: (d) => d.getDate().toString(),
 
   // Weekday
-  EEEE: (d, locale) => new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(d),
-  EEE: (d, locale) => new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(d),
+  EEEE: (d, locale) => {
+    try {
+      return new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'long' }).format(d);
+    } catch {
+      return new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(d);
+    }
+  },
+  EEE: (d, locale) => {
+    try {
+      return new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'short' }).format(d);
+    } catch {
+      return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(d);
+    }
+  },
 
   // Hour (24-hour)
   HH: (d) => d.getHours().toString().padStart(2, '0'),
@@ -56,11 +80,15 @@ const TOKEN_MAP: Record<string, (date: Date, locale: string) => string> = {
   // AM/PM
   a: (d, locale) => {
     const hour = d.getHours();
-    const ampm = new Intl.DateTimeFormat(locale, { hour: 'numeric', hour12: true })
-      .format(d)
-      .replace(/\d+/g, '')
-      .trim();
-    return ampm || (hour < 12 ? 'AM' : 'PM');
+    try {
+      const ampm = new Intl.DateTimeFormat(locale || 'en-US', { hour: 'numeric', hour12: true })
+        .format(d)
+        .replace(/\d+/g, '')
+        .trim();
+      return ampm || (hour < 12 ? 'AM' : 'PM');
+    } catch {
+      return hour < 12 ? 'AM' : 'PM';
+    }
   },
   A: (d, locale) => {
     const aFormatter = TOKEN_MAP.a;
@@ -175,6 +203,7 @@ function formatWithPattern(date: Date, pattern: string, locale: string): string 
     }
 
     if (!matched) {
+      // Not a token, just copy the character
       result += pattern[i];
       i++;
     }
