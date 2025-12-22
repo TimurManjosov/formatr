@@ -14,74 +14,74 @@ export type DateFormat = 'short' | 'medium' | 'long' | 'full' | string;
  */
 const TOKEN_MAP: Record<string, (date: Date, locale: string) => string> = {
   // Year
-  yyyy: (d) => d.getFullYear().toString(),
-  yy: (d) => d.getFullYear().toString().slice(-2),
+  yyyy: (d) => d.getUTCFullYear().toString(),
+  yy: (d) => d.getUTCFullYear().toString().slice(-2),
 
   // Month
   MMMM: (d, locale) => {
     try {
-      return new Intl.DateTimeFormat(locale || 'en-US', { month: 'long' }).format(d);
+      return new Intl.DateTimeFormat(locale || 'en-US', { month: 'long', timeZone: 'UTC' }).format(d);
     } catch {
-      return new Intl.DateTimeFormat('en-US', { month: 'long' }).format(d);
+      return new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(d);
     }
   },
   MMM: (d, locale) => {
     try {
-      return new Intl.DateTimeFormat(locale || 'en-US', { month: 'short' }).format(d);
+      return new Intl.DateTimeFormat(locale || 'en-US', { month: 'short', timeZone: 'UTC' }).format(d);
     } catch {
-      return new Intl.DateTimeFormat('en-US', { month: 'short' }).format(d);
+      return new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(d);
     }
   },
-  MM: (d) => (d.getMonth() + 1).toString().padStart(2, '0'),
-  M: (d) => (d.getMonth() + 1).toString(),
+  MM: (d) => (d.getUTCMonth() + 1).toString().padStart(2, '0'),
+  M: (d) => (d.getUTCMonth() + 1).toString(),
 
   // Day
-  dd: (d) => d.getDate().toString().padStart(2, '0'),
-  d: (d) => d.getDate().toString(),
+  dd: (d) => d.getUTCDate().toString().padStart(2, '0'),
+  d: (d) => d.getUTCDate().toString(),
 
   // Weekday
   EEEE: (d, locale) => {
     try {
-      return new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'long' }).format(d);
+      return new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'long', timeZone: 'UTC' }).format(d);
     } catch {
-      return new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(d);
+      return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(d);
     }
   },
   EEE: (d, locale) => {
     try {
-      return new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'short' }).format(d);
+      return new Intl.DateTimeFormat(locale || 'en-US', { weekday: 'short', timeZone: 'UTC' }).format(d);
     } catch {
-      return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(d);
+      return new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(d);
     }
   },
 
   // Hour (24-hour)
-  HH: (d) => d.getHours().toString().padStart(2, '0'),
-  H: (d) => d.getHours().toString(),
+  HH: (d) => d.getUTCHours().toString().padStart(2, '0'),
+  H: (d) => d.getUTCHours().toString(),
 
   // Hour (12-hour)
   hh: (d) => {
-    const h = d.getHours() % 12 || 12;
+    const h = d.getUTCHours() % 12 || 12;
     return h.toString().padStart(2, '0');
   },
   h: (d) => {
-    const h = d.getHours() % 12 || 12;
+    const h = d.getUTCHours() % 12 || 12;
     return h.toString();
   },
 
   // Minute
-  mm: (d) => d.getMinutes().toString().padStart(2, '0'),
-  m: (d) => d.getMinutes().toString(),
+  mm: (d) => d.getUTCMinutes().toString().padStart(2, '0'),
+  m: (d) => d.getUTCMinutes().toString(),
 
   // Second
-  ss: (d) => d.getSeconds().toString().padStart(2, '0'),
-  s: (d) => d.getSeconds().toString(),
+  ss: (d) => d.getUTCSeconds().toString().padStart(2, '0'),
+  s: (d) => d.getUTCSeconds().toString(),
 
   // AM/PM
   a: (d, locale) => {
-    const hour = d.getHours();
+    const hour = d.getUTCHours();
     try {
-      const ampm = new Intl.DateTimeFormat(locale || 'en-US', { hour: 'numeric', hour12: true })
+      const ampm = new Intl.DateTimeFormat(locale || 'en-US', { hour: 'numeric', hour12: true, timeZone: 'UTC' })
         .format(d)
         .replace(/\d+/g, '')
         .trim();
@@ -91,7 +91,7 @@ const TOKEN_MAP: Record<string, (date: Date, locale: string) => string> = {
     }
   },
   A: (d) => {
-    const hour = d.getHours();
+    const hour = d.getUTCHours();
     return hour < 12 ? 'AM' : 'PM';
   },
 };

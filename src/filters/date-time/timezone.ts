@@ -110,6 +110,64 @@ export const timezone: Filter = (value: unknown, ...args: string[]) => {
 };
 
 /**
+ * Gets a proper timezone abbreviation, with fallback for common US timezones
+ * 
+ * @param date - Date to format
+ * @param timeZone - IANA timezone identifier
+ * @param locale - Locale for formatting
+ * @returns Timezone abbreviation
+ */
+function getTimezoneAbbreviation(date: Date, timeZone: string, locale?: string): string {
+  const formatter = new Intl.DateTimeFormat(locale, {
+    timeZone,
+    timeZoneName: 'short',
+  });
+
+  const parts = formatter.formatToParts(date);
+  const timeZoneName = parts.find((p) => p.type === 'timeZoneName')?.value || '';
+
+  // Check if it's a real abbreviation (letters only, 2-5 chars)
+  if (/^[A-Z]{2,5}$/i.test(timeZoneName)) {
+    return timeZoneName;
+  }
+
+  // Fallback: compute abbreviation for known US timezones based on UTC offset
+  const offsetMinutes = getTimezoneOffset(date, timeZone);
+  
+  // Map of common US timezones with their standard and daylight offsets
+  const timezoneMap: Record<string, { std: number; dst: number; stdName: string; dstName: string }> = {
+    'America/New_York': { std: -5 * 60, dst: -4 * 60, stdName: 'EST', dstName: 'EDT' },
+    'America/Chicago': { std: -6 * 60, dst: -5 * 60, stdName: 'CST', dstName: 'CDT' },
+    'America/Denver': { std: -7 * 60, dst: -6 * 60, stdName: 'MST', dstName: 'MDT' },
+    'America/Los_Angeles': { std: -8 * 60, dst: -7 * 60, stdName: 'PST', dstName: 'PDT' },
+  };
+
+  const tzInfo = timezoneMap[timeZone];
+  if (tzInfo) {
+    return offsetMinutes === tzInfo.std ? tzInfo.stdName : tzInfo.dstName;
+  }
+
+  // If no match, return the original value (might be GMT-5, etc.)
+  return timeZoneName;
+}
+
+/**
+ * Gets the UTC offset in minutes for a specific timezone and date
+ * 
+ * @param date - Date to check
+ * @param timeZone - IANA timezone identifier
+ * @returns Offset in minutes
+ */
+function getTimezoneOffset(date: Date, timeZone: string): number {
+  // Get UTC time
+  const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+  // Get time in target timezone
+  const tzDate = new Date(date.toLocaleString('en-US', { timeZone }));
+  // Calculate difference in minutes
+  return Math.round((tzDate.getTime() - utcDate.getTime()) / 60000);
+}
+
+/**
  * Formats a date in a specific timezone using a pattern
  * 
  * @param date - Date to format
@@ -143,6 +201,11 @@ function formatInTimezone(
 
   for (const part of parts) {
     partsMap[part.type] = part.value;
+  }
+
+  // Get proper timezone abbreviation with fallback
+  if (showTimezone && partsMap.timeZoneName) {
+    partsMap.timeZoneName = getTimezoneAbbreviation(date, timeZone, locale);
   }
 
   // Build a simple format based on the pattern
