@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 
 export default [
   // Ignore build artifacts
-  { ignores: ['dist', 'build', 'coverage', 'node_modules'] },
+  { ignores: ['**/dist/**', '**/build/**', '**/coverage/**', '**/node_modules/**'] },
 
   // Base JS
   js.configs.recommended,

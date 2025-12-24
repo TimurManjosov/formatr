@@ -1,0 +1,39 @@
+{
+  "name": "@formatr/vue",
+  "version": "0.1.0",
+  "description": "Vue 3 composables and components for formatr template engine",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format cjs,esm",
+    "test": "vitest run",
+    "dev": "vitest"
+  },
+  "keywords": [
+    "formatr",
+    "vue",
+    "vue3",
+    "composables",
+    "template"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  },
+  "dependencies": {
+    "@timur_manjosov/formatr": "file:../.."
+  },
+  "devDependencies": {
+    "@vue/test-utils": "^2.4.6",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
+    "vue": "^3.5.13"
+  }
+}
