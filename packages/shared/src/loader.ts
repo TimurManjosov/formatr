@@ -54,7 +54,17 @@ export class TemplateLoader {
     const name = templateName.endsWith(this.extension) 
       ? templateName 
       : `${templateName}${this.extension}`;
-    return path.join(this.templatesDir, name);
+    
+    const resolvedPath = path.resolve(this.templatesDir, name);
+    const normalizedTemplatesDir = path.resolve(this.templatesDir);
+    
+    // Security: Prevent directory traversal attacks
+    if (!resolvedPath.startsWith(normalizedTemplatesDir + path.sep) && 
+        resolvedPath !== normalizedTemplatesDir) {
+      throw new Error(`Invalid template path: ${templateName}`);
+    }
+    
+    return resolvedPath;
   }
 
   clearCache(): void {

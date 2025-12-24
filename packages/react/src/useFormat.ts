@@ -28,6 +28,9 @@ export function useFormat<T extends Record<string, unknown>>(
 ): string {
   const { filters, locale } = useFormatrContext();
 
+  // Serialize context for stable dependency comparison
+  const contextKey = useMemo(() => JSON.stringify(context), [context]);
+
   return useMemo(() => {
     const options: TemplateOptions = {};
     if (filters !== undefined) options.filters = filters;
@@ -35,5 +38,5 @@ export function useFormat<T extends Record<string, unknown>>(
     
     const compiled = template(templateStr, options);
     return compiled(context);
-  }, [templateStr, context, filters, locale]);
+  }, [templateStr, contextKey, filters, locale, context]);
 }

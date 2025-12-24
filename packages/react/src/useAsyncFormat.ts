@@ -43,6 +43,9 @@ export function useAsyncFormat<T extends Record<string, unknown>>(
 ): string {
   const { filters, locale } = useFormatrContext();
 
+  // Serialize context for stable dependency comparison
+  const contextKey = useMemo(() => JSON.stringify(context), [context]);
+
   const promise = useMemo(() => {
     const options: TemplateOptions = {};
     if (filters !== undefined) options.filters = filters;
@@ -50,7 +53,7 @@ export function useAsyncFormat<T extends Record<string, unknown>>(
     
     const compiled = templateAsync(templateStr, options);
     return compiled(context);
-  }, [templateStr, context, filters, locale]);
+  }, [templateStr, contextKey, filters, locale, context]);
 
   // Use React's experimental `use` hook to integrate with Suspense
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment

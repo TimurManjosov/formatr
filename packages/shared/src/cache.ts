@@ -31,12 +31,20 @@ export class TemplateCache<T = string> {
       return undefined;
     }
 
+    // Move to end for LRU (delete and re-add to update position)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+
     return entry.value;
   }
 
   set(key: string, value: T): void {
-    // If cache is full, remove oldest entry
-    if (this.cache.size >= this.maxSize) {
+    // If key exists, delete it first to update its position
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+    // If cache is full, remove least recently used entry (first entry)
+    else if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value;
       if (firstKey !== undefined) {
         this.cache.delete(firstKey);

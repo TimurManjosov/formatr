@@ -5,7 +5,8 @@ import type {
   CallHandler,
 } from '@nestjs/common';
 import type { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { switchMap } from 'rxjs/operators';
+import { from } from 'rxjs';
 import { Reflector } from '@nestjs/core';
 import { FormatrService } from './formatr.service';
 import { FORMATR_TEMPLATE_KEY } from './decorators';
@@ -32,11 +33,11 @@ export class FormatrInterceptor implements NestInterceptor {
     }
 
     return next.handle().pipe(
-      map(async (data) => {
+      switchMap((data) => {
         if (typeof data === 'object' && data !== null) {
-          return await this.formatrService.render(templateName, data);
+          return from(this.formatrService.render(templateName, data));
         }
-        return data;
+        return from(Promise.resolve(data));
       }),
     );
   }
