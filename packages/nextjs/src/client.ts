@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 import { template } from '@timur_manjosov/formatr';
 
+interface TemplateOptions {
+  filters?: Record<string, (value: unknown) => unknown>;
+}
+
 /**
  * Client-side hook for formatr templates
  * For use in Next.js client components
@@ -27,7 +31,7 @@ export function useFormatr<T extends Record<string, unknown>>(
   filters?: Record<string, (value: unknown) => unknown>
 ): string {
   return useMemo(() => {
-    const options: any = {};
+    const options: TemplateOptions = {};
     if (filters !== undefined) options.filters = filters;
     
     const compiled = template(templateStr, options);

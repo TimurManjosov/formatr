@@ -2,6 +2,11 @@ import { computed, inject, unref, type MaybeRef } from 'vue';
 import { template } from '@timur_manjosov/formatr';
 import { FormatrOptionsKey, type FormatrPluginOptions } from './plugin';
 
+interface TemplateOptions {
+  filters?: Record<string, (value: unknown) => unknown>;
+  locale?: string;
+}
+
 /**
  * Composable for reactive template formatting
  * 
@@ -41,7 +46,7 @@ export function useFormat<T extends Record<string, unknown>>(
     const tpl = unref(templateStr);
     const ctx = unref(context);
     
-    const compileOpts: any = {};
+    const compileOpts: TemplateOptions = {};
     if (options.filters !== undefined) compileOpts.filters = options.filters;
     if (options.locale !== undefined) compileOpts.locale = options.locale;
     

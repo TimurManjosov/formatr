@@ -8,3 +8,5 @@ build/*.map
 build/debug.wasm
 playground/dist
 playground/node_modules
+packages/*/node_modules
+packages/*/dist

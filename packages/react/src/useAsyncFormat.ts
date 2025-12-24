@@ -3,6 +3,11 @@ import * as React from 'react';
 import { templateAsync } from '@timur_manjosov/formatr';
 import { useFormatrContext } from './FormatrProvider';
 
+interface TemplateOptions {
+  filters?: Record<string, (value: unknown) => unknown>;
+  locale?: string;
+}
+
 // Type declaration for React's experimental `use` hook
 declare module 'react' {
   function use<T>(promise: Promise<T>): T;
@@ -39,7 +44,7 @@ export function useAsyncFormat<T extends Record<string, unknown>>(
   const { filters, locale } = useFormatrContext();
 
   const promise = useMemo(() => {
-    const options: any = {};
+    const options: TemplateOptions = {};
     if (filters !== undefined) options.filters = filters;
     if (locale !== undefined) options.locale = locale;
     

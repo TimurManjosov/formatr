@@ -2,6 +2,11 @@ import { useMemo } from 'react';
 import { template } from '@timur_manjosov/formatr';
 import { useFormatrContext } from './FormatrProvider';
 
+interface TemplateOptions {
+  filters?: Record<string, (value: unknown) => unknown>;
+  locale?: string;
+}
+
 /**
  * Hook to format a template string with the given context
  * 
@@ -24,7 +29,7 @@ export function useFormat<T extends Record<string, unknown>>(
   const { filters, locale } = useFormatrContext();
 
   return useMemo(() => {
-    const options: any = {};
+    const options: TemplateOptions = {};
     if (filters !== undefined) options.filters = filters;
     if (locale !== undefined) options.locale = locale;
     
