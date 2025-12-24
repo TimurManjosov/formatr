@@ -1,6 +1,9 @@
+// Types used for module augmentation
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Request, Response } from 'express';
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Response {
       /**

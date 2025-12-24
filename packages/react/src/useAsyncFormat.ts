@@ -48,6 +48,7 @@ export function useAsyncFormat<T extends Record<string, unknown>>(
   }, [templateStr, context, filters, locale]);
 
   // Use React's experimental `use` hook to integrate with Suspense
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore - use is experimental in React 18/19
   return React.use(promise);
 }

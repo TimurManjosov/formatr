@@ -38,6 +38,7 @@ A tiny, type‑safe templating engine that combines placeholders, filters, inter
 
 - [Features](#-features)
 - [Installation](#-installation)
+- [Framework Integrations](#-framework-integrations)
 - [Quickstart](#-quickstart)
 - [Real-World Use Cases](#-real-world-use-cases)
 - [API](#-api)
@@ -82,6 +83,127 @@ pnpm add @timur_manjosov/formatr
 # yarn
 yarn add @timur_manjosov/formatr
 ```
+
+---
+
+## 🔌 Framework Integrations
+
+`formatr` provides official integrations for popular frameworks, making it seamless to use in your existing projects:
+
+### Express.js
+
+Add formatr template rendering to Express routes with middleware support:
+
+```bash
+npm install @formatr/express
+```
+
+```typescript
+import express from 'express';
+import { formatrMiddleware } from '@formatr/express';
+
+const app = express();
+
+app.use(formatrMiddleware({
+  templatesDir: './templates',
+  cache: true,
+}));
+
+app.get('/hello', async (req, res) => {
+  await res.formatr('greeting', { name: 'World' });
+});
+```
+
+[View Express Integration Docs →](./packages/express)
+
+### NestJS
+
+Full dependency injection support with modules, services, and decorators:
+
+```bash
+npm install @formatr/nestjs
+```
+
+```typescript
+import { FormatrModule } from '@formatr/nestjs';
+
+@Module({
+  imports: [
+    FormatrModule.register({
+      templatesDir: './templates',
+      cache: true,
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+[View NestJS Integration Docs →](./packages/nestjs)
+
+### Next.js
+
+SSR/SSG support with build-time optimizations:
+
+```bash
+npm install @formatr/nextjs
+```
+
+```typescript
+// next.config.js
+import { withFormatr } from '@formatr/nextjs';
+
+export default withFormatr({
+  formatr: {
+    templatesDir: './templates',
+    cache: true,
+  },
+});
+```
+
+[View Next.js Integration Docs →](./packages/nextjs)
+
+### React
+
+Hooks and components with Suspense support:
+
+```bash
+npm install @formatr/react
+```
+
+```tsx
+import { useFormat } from '@formatr/react';
+
+function Greeting({ name }: { name: string }) {
+  const message = useFormat('Hello, {name}!', { name });
+  return <div>{message}</div>;
+}
+```
+
+[View React Integration Docs →](./packages/react)
+
+### Vue 3
+
+Reactive composables and components:
+
+```bash
+npm install @formatr/vue
+```
+
+```vue
+<script setup>
+import { useFormat } from '@formatr/vue';
+import { ref } from 'vue';
+
+const name = ref('World');
+const formatted = useFormat('Hello, {name}!', { name });
+</script>
+
+<template>
+  <div>{{ formatted }}</div>
+</template>
+```
+
+[View Vue Integration Docs →](./packages/vue)
 
 ---
 
