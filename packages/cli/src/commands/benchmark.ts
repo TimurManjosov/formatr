@@ -283,7 +283,11 @@ export const benchmarkCommand = new Command('benchmark')
         console.log(logger.colored.bold('Comparison:'));
         console.log(`  Fastest: ${logger.colored.green(getRelativePath(fastest.file))} (${fastest.mean.toFixed(4)} ms)`);
         console.log(`  Slowest: ${logger.colored.red(getRelativePath(slowest.file))} (${slowest.mean.toFixed(4)} ms)`);
-        console.log(`  Difference: ${((slowest.mean / fastest.mean - 1) * 100).toFixed(1)}% slower`);
+        if (fastest.mean === 0) {
+          console.log('  Difference: N/A (fastest mean is 0 ms)');
+        } else {
+          console.log(`  Difference: ${((slowest.mean / fastest.mean - 1) * 100).toFixed(1)}% slower`);
+        }
       }
       
       process.exit(EXIT_CODES.SUCCESS);

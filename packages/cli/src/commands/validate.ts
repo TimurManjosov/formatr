@@ -157,14 +157,12 @@ export const validateCommand = new Command('validate')
         }));
         console.log(JSON.stringify(output, null, 2));
       } else {
-        let hasErrors = false;
         let hasWarnings = false;
         
         for (const result of results) {
           const relativePath = getRelativePath(result.file);
           
           if (result.errors.length > 0) {
-            hasErrors = true;
             logger.error(relativePath);
             for (const error of result.errors) {
               console.log(formatDiagnostic(error, result.file));

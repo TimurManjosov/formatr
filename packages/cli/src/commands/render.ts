@@ -17,7 +17,7 @@ import {
   EXIT_CODES,
   type DataFormat,
 } from '../utils/index.js';
-import { basename, join, dirname } from 'node:path';
+import { join } from 'node:path';
 
 interface RenderOptions {
   data?: string;

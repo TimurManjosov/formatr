@@ -60,8 +60,8 @@ export class Progress {
     }
     
     if (process.stdout.isTTY) {
-      // Clear the line
-      process.stdout.write('\r' + ' '.repeat(this.text.length + 10) + '\r');
+      // Clear the entire current line using ANSI escape sequence
+      process.stdout.write('\r\x1b[2K');
     }
     
     if (finalText) {

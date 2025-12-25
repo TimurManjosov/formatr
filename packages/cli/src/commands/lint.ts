@@ -149,11 +149,7 @@ const LINT_RULES: LintRule[] = [
     severity: 'error',
     check: (source) => {
       const issues: LintIssue[] = [];
-      // Simple check for { { or } }
-      const nestedRegex = /\{[^}]*\{|\}[^{]*\}/g;
-      let match;
-      
-      // This is a simplified check - real implementation would need proper parsing
+      // Simplified depth-based check for nested single braces (ignores escaped/templating syntax)
       let depth = 0;
       let startPos = -1;
       

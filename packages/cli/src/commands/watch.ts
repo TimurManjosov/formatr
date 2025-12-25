@@ -14,7 +14,7 @@ import {
   getRelativePath,
   EXIT_CODES,
 } from '../utils/index.js';
-import { join, basename, extname, dirname } from 'node:path';
+import { join, basename, extname } from 'node:path';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 interface WatchOptions {
@@ -139,12 +139,12 @@ export const watchCommand = new Command('watch')
       
       const templatePath = templateArg ?? '.';
       const debounceMs = parseInt(options.debounce ?? '300', 10);
-      const extensions = parseExtensions(options.extensions);
+      const extensions = parseExtensions(options.extensions) ?? ['.fmt'];
       
       // Determine files to watch
       let templateFiles: string[] = [];
       if (await isDirectory(templatePath)) {
-        templateFiles = await findFiles(templatePath, ['.fmt'], true);
+        templateFiles = await findFiles(templatePath, extensions, true);
       } else if (pathExists(templatePath)) {
         templateFiles = [templatePath];
       } else {
@@ -236,14 +236,14 @@ export const watchCommand = new Command('watch')
         ignoreInitial: true,
       });
       
-      watcher.on('change', (path: string) => {
+      watcher.on('change', async (path: string) => {
         logger.info(`Changed: ${getRelativePath(path)}`);
-        debouncedRender();
+        await render();
       });
       
-      watcher.on('add', (path: string) => {
+      watcher.on('add', async (path: string) => {
         logger.info(`Added: ${getRelativePath(path)}`);
-        debouncedRender();
+        await render();
       });
       
       watcher.on('error', (error: unknown) => {
@@ -254,8 +254,18 @@ export const watchCommand = new Command('watch')
       // Keep process running
       process.on('SIGINT', () => {
         logger.info('\nStopping watch mode...');
-        watcher.close();
-        process.exit(EXIT_CODES.SUCCESS);
+        watcher.close()
+          .then(() => {
+            process.exit(EXIT_CODES.SUCCESS);
+          })
+          .catch((error: unknown) => {
+            logger.error(
+              `Error while stopping watcher: ${
+                error instanceof Error ? error.message : String(error)
+              }`
+            );
+            process.exit(EXIT_CODES.FAILURE);
+          });
       });
       
     } catch (error) {

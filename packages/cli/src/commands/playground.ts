@@ -249,6 +249,18 @@ Example: Hello {name|upper}!">{{{INITIAL_TEMPLATE}}}</textarea>
 </html>`;
 
 /**
+ * Escape HTML entities to prevent XSS
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Start the playground server
  */
 function startPlaygroundServer(
@@ -273,8 +285,8 @@ function startPlaygroundServer(
     // Serve the playground HTML
     if (url === '/' && req.method === 'GET') {
       const html = PLAYGROUND_HTML
-        .replace('{{{INITIAL_TEMPLATE}}}', initialTemplate.replace(/</g, '&lt;').replace(/>/g, '&gt;'))
-        .replace('{{{INITIAL_DATA}}}', initialData.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+        .replace('{{{INITIAL_TEMPLATE}}}', escapeHtml(initialTemplate))
+        .replace('{{{INITIAL_DATA}}}', escapeHtml(initialData));
       
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(html);
@@ -283,16 +295,37 @@ function startPlaygroundServer(
     
     // API: Render template
     if (url === '/api/render' && req.method === 'POST') {
+      const MAX_BODY_SIZE = 1024 * 1024; // 1MB
       let body = '';
-      req.on('data', chunk => body += chunk);
+      let bodySize = 0;
+      let tooLarge = false;
+
+      req.on('data', (chunk: Buffer | string) => {
+        if (tooLarge) {
+          return;
+        }
+
+        const chunkLength = typeof chunk === 'string' ? chunk.length : chunk.byteLength;
+        bodySize += chunkLength;
+        
+        if (bodySize > MAX_BODY_SIZE) {
+          tooLarge = true;
+          res.writeHead(413, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Request body too large' }));
+          req.removeAllListeners('data');
+          req.removeAllListeners('end');
+          return;
+        }
+
+        body += chunk;
+      });
+
       req.on('end', () => {
+        if (tooLarge) {
+          return;
+        }
+
         try {
-          // Limit body size to prevent DoS
-          if (body.length > 1024 * 1024) {
-            res.writeHead(413, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Request body too large' }));
-            return;
-          }
           
           let parsed: { template?: unknown; data?: unknown };
           try {
