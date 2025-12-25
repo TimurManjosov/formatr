@@ -287,8 +287,31 @@ function startPlaygroundServer(
       req.on('data', chunk => body += chunk);
       req.on('end', () => {
         try {
-          const { template: tmpl, data } = JSON.parse(body);
-          const parsedData = JSON.parse(data || '{}');
+          // Limit body size to prevent DoS
+          if (body.length > 1024 * 1024) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Request body too large' }));
+            return;
+          }
+          
+          let parsed: { template?: unknown; data?: unknown };
+          try {
+            parsed = JSON.parse(body) as { template?: unknown; data?: unknown };
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid JSON in request body' }));
+            return;
+          }
+          
+          const tmpl = typeof parsed.template === 'string' ? parsed.template : '';
+          const dataStr = typeof parsed.data === 'string' ? parsed.data : '{}';
+          
+          let parsedData: unknown;
+          try {
+            parsedData = JSON.parse(dataStr);
+          } catch {
+            parsedData = {};
+          }
           
           // Analyze first
           const report = analyze(tmpl);
@@ -298,7 +321,7 @@ function startPlaygroundServer(
           let error = '';
           try {
             const renderFn = template(tmpl);
-            output = renderFn(parsedData);
+            output = renderFn(parsedData as Record<string, unknown>);
           } catch (e) {
             error = e instanceof Error ? e.message : String(e);
           }

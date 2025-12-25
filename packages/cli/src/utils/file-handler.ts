@@ -29,6 +29,8 @@ export async function writeFile(filePath: string, content: string): Promise<void
 
 /**
  * Check if a path exists
+ * Note: Uses synchronous existsSync for simplicity in CLI path validation.
+ * This is a common pattern in CLI tools where the blocking is acceptable.
  */
 export function pathExists(filePath: string): boolean {
   const absolutePath = isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath);

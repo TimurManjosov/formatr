@@ -219,9 +219,12 @@ export const watchCommand = new Command('watch')
       if (options.serve) {
         const port = parseInt(options.port ?? '3000', 10);
         startLiveReloadServer(port, async () => {
-          if (!currentContent && dataPath) {
-            const data = await parseData(dataPath);
-            currentContent = await renderTemplate(templateFiles[0]!, data);
+          if (!currentContent && dataPath && templateFiles.length > 0) {
+            const firstTemplate = templateFiles[0];
+            if (firstTemplate) {
+              const data = await parseData(dataPath);
+              currentContent = await renderTemplate(firstTemplate, data);
+            }
           }
           return currentContent;
         });

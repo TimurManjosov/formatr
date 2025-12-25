@@ -87,8 +87,8 @@ async function benchmarkTemplate(
     renderFn(ctx);
   }
   
-  // Force GC if available
-  if (global.gc) {
+  // Force GC if available (Node.js --expose-gc flag)
+  if (typeof global.gc === 'function') {
     global.gc();
   }
   
