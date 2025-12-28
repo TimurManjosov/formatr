@@ -272,20 +272,30 @@ export class PluginManager {
   }
 
   /**
-   * Validate a hook for synchronous execution.
-   * @throws FormatrError if hook is async or returns a Promise
+   * Validate that a hook is not an async function.
+   * @throws FormatrError if hook is async
    */
-  private validateSyncHook<T>(
-    hook: ((...args: any[]) => T | Promise<T>) | undefined,
+  private validateHookNotAsync(
+    hook: ((...args: unknown[]) => unknown) | undefined,
     pluginName: string,
-    hookName: string,
-    result: unknown
+    hookName: string
   ): void {
     if (hook && isAsyncFunction(hook)) {
       throw new FormatrError(
         `Plugin "${pluginName}" has async ${hookName} hook. Use async render methods.`
       );
     }
+  }
+
+  /**
+   * Validate that a hook result is not a Promise.
+   * @throws FormatrError if result is a Promise
+   */
+  private validateResultNotPromise(
+    result: unknown,
+    pluginName: string,
+    hookName: string
+  ): void {
     if (result instanceof Promise) {
       throw new FormatrError(
         `Plugin "${pluginName}" ${hookName} hook returned a Promise. Use async render methods.`
@@ -333,9 +343,9 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.beforeRender;
       if (hook) {
-        this.validateSyncHook(hook, name, 'beforeRender', undefined);
+        this.validateHookNotAsync(hook, name, 'beforeRender');
         const hookResult = hook(result.template, result.context, options);
-        this.validateSyncHook(undefined, name, 'beforeRender', hookResult);
+        this.validateResultNotPromise(hookResult, name, 'beforeRender');
         result = hookResult as BeforeRenderResult;
         if (result.skipRender) {
           return result;
@@ -379,9 +389,9 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.afterRender;
       if (hook) {
-        this.validateSyncHook(hook, name, 'afterRender', undefined);
+        this.validateHookNotAsync(hook, name, 'afterRender');
         const hookResult = hook(output, metadata);
-        this.validateSyncHook(undefined, name, 'afterRender', hookResult);
+        this.validateResultNotPromise(hookResult, name, 'afterRender');
         output = hookResult as string;
       }
     }
@@ -429,10 +439,10 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.onError;
       if (hook) {
-        this.validateSyncHook(hook, name, 'onError', undefined);
+        this.validateHookNotAsync(hook, name, 'onError');
         try {
           const result = hook(currentError, context);
-          this.validateSyncHook(undefined, name, 'onError', result);
+          this.validateResultNotPromise(result, name, 'onError');
           if (result instanceof Error) {
             currentError = result;
           }
