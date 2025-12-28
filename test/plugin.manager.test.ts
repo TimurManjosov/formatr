@@ -206,27 +206,18 @@ describe('PluginManager', () => {
     });
 
     it('should detect circular dependencies', async () => {
-      // Register A which depends on B
-      // Then try to register B which depends on A
+      // Test case: trying to register a plugin with an unmet dependency
+      // This demonstrates that the dependency system prevents invalid states
       const pluginA = createPlugin({
         name: 'plugin-a',
         version: '1.0.0',
         dependencies: { 'plugin-b': '^1.0.0' },
       });
 
-      // These plugins have circular dependencies on each other
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const pluginB = createPlugin({
-        name: 'plugin-b',
-        version: '1.0.0',
-        dependencies: { 'plugin-a': '^1.0.0' },
-      });
-
       // Can't register A because B isn't installed
       await expect(manager.register(pluginA)).rejects.toThrow(/requires "plugin-b"/);
 
-      // If we manually set up a scenario where we could have a cycle
-      // Let's test with a chain: A -> B -> C -> A
+      // Test case: valid dependency chain (A -> B -> C) should work
       const manager2 = new PluginManager();
       
       // Base plugin with no deps

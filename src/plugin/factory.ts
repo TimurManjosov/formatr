@@ -8,7 +8,7 @@ import { FormatrError } from '../core/errors';
  * Names must be non-empty strings containing only alphanumeric characters, hyphens, and underscores.
  */
 function validatePluginName(name: string): void {
-  if (!name || typeof name !== 'string') {
+  if (typeof name !== 'string' || name.length === 0) {
     throw new FormatrError('Plugin must have a name (non-empty string)');
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(name)) {

@@ -10,7 +10,7 @@ import type {
   ErrorContext,
   RenderOptions,
 } from './types';
-import { bindPluginToRuntime, hasAsyncHooks } from './factory';
+import { bindPluginToRuntime, hasAsyncHooks, isAsyncFunction } from './factory';
 import { satisfies } from './version';
 import { FormatrError } from '../core/errors';
 
@@ -133,7 +133,7 @@ export class PluginManager {
     const name = plugin.name;
 
     // Check if plugin has async init
-    if (plugin.init && plugin.init.constructor.name === 'AsyncFunction') {
+    if (plugin.init && isAsyncFunction(plugin.init)) {
       throw new FormatrError(
         `Plugin "${name}" has async init. Use register() instead of registerSync().`
       );
@@ -230,7 +230,7 @@ export class PluginManager {
     if (!instance) return;
 
     // Check if plugin has async cleanup
-    if (instance.plugin.cleanup && instance.plugin.cleanup.constructor.name === 'AsyncFunction') {
+    if (instance.plugin.cleanup && isAsyncFunction(instance.plugin.cleanup)) {
       throw new FormatrError(
         `Plugin "${name}" has async cleanup. Use unregister() instead of unregisterSync().`
       );
@@ -354,7 +354,7 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.beforeRender;
       if (hook) {
-        if (hook.constructor.name === 'AsyncFunction') {
+        if (isAsyncFunction(hook)) {
           throw new FormatrError(
             `Plugin "${name}" has async beforeRender hook. Use async render methods.`
           );
@@ -408,7 +408,7 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.afterRender;
       if (hook) {
-        if (hook.constructor.name === 'AsyncFunction') {
+        if (isAsyncFunction(hook)) {
           throw new FormatrError(
             `Plugin "${name}" has async afterRender hook. Use async render methods.`
           );
@@ -466,7 +466,7 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.onError;
       if (hook) {
-        if (hook.constructor.name === 'AsyncFunction') {
+        if (isAsyncFunction(hook)) {
           throw new FormatrError(
             `Plugin "${name}" has async onError hook. Use async render methods.`
           );
