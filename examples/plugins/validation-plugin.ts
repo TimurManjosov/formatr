@@ -4,6 +4,12 @@
  * 
  * This plugin demonstrates context validation using beforeRender middleware.
  * It validates the context data before template rendering begins.
+ * 
+ * NOTE: Filter functions use `this: any` because the plugin runtime context binding
+ * happens at registration time via `bindPluginToRuntime`. The actual runtime context
+ * implements `PluginRuntimeContext` interface with `state`, `options`, `methods`, and
+ * `getPlugin` properties. Using `any` here is a trade-off for simpler filter definitions
+ * in example code. In production, you could create a typed wrapper or use type assertions.
  */
 
 import { createPlugin, PluginManager, RenderOptions } from '../../src/plugin';

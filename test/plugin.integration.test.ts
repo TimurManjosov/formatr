@@ -262,14 +262,12 @@ describe('Plugin Integration Tests', () => {
               return { template, context, skipRender: true, cached };
             }
             
-            return { template, context, cacheKey: key };
+            return { template, context, metadata: { cacheKey: key } };
           },
           afterRender(result, metadata) {
-            if (metadata.cacheKey) {
-              (this.state.cache as Map<string, string>).set(
-                metadata.cacheKey as string,
-                result
-              );
+            const cacheKey = metadata.metadata?.cacheKey as string | undefined;
+            if (cacheKey) {
+              (this.state.cache as Map<string, string>).set(cacheKey, result);
             }
             return result;
           },
@@ -288,9 +286,9 @@ describe('Plugin Integration Tests', () => {
 
       // After render - should cache
       await manager.executeAfterRender(rendered, {
-        ...before1,
         template: 'Hello {name}',
         context: { name: 'World' },
+        metadata: before1.metadata,
       });
 
       // Second render - cache hit

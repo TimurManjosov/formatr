@@ -60,13 +60,14 @@ const cachingPlugin = createPlugin<CacheOptions>({
       return {
         template: tpl,
         context,
-        cacheKey: key,
+        metadata: { cacheKey: key },
       };
     },
 
     afterRender(result, metadata) {
       // Only cache if we have a cache key (wasn't a cache hit)
-      if (metadata.cacheKey) {
+      const cacheKey = metadata.metadata?.cacheKey as string | undefined;
+      if (cacheKey) {
         const cache = this.state.cache as Map<string, { value: string; expiry: number }>;
         const ttl = this.state.ttl as number;
         const maxSize = this.state.maxSize as number;
@@ -78,11 +79,11 @@ const cachingPlugin = createPlugin<CacheOptions>({
         }
 
         // Store the result
-        cache.set(metadata.cacheKey as string, {
+        cache.set(cacheKey, {
           value: result,
           expiry: Date.now() + ttl,
         });
-        console.log(`[Cache] Stored result for key ${(metadata.cacheKey as string).slice(0, 16)}...`);
+        console.log(`[Cache] Stored result for key ${cacheKey.slice(0, 16)}...`);
       }
 
       return result;

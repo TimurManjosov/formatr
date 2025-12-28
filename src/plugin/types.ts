@@ -24,8 +24,8 @@ export interface PluginMetadata {
  * Render options passed to middleware hooks.
  */
 export interface RenderOptions extends CompileOptions {
-  /** Allow plugins to attach custom metadata */
-  [key: string]: unknown;
+  /** Plugin-specific metadata that should not conflict with CompileOptions */
+  pluginData?: Record<string, unknown>;
 }
 
 /**
@@ -38,8 +38,8 @@ export interface RenderMetadata {
   context: Record<string, unknown>;
   /** Options passed to the render function */
   options?: RenderOptions;
-  /** Additional metadata attached by plugins (e.g., cacheKey) */
-  [key: string]: unknown;
+  /** Plugin-specific metadata from beforeRender hooks (e.g., cacheKey) */
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -66,8 +66,8 @@ export interface BeforeRenderResult {
   skipRender?: boolean;
   /** Cached result to return when skipRender is true */
   cached?: string;
-  /** Additional metadata to pass to afterRender */
-  [key: string]: unknown;
+  /** Plugin-specific metadata to pass to afterRender (e.g., cacheKey) */
+  metadata?: Record<string, unknown>;
 }
 
 /**

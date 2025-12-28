@@ -205,7 +205,7 @@ describe('PluginManager', () => {
       await expect(manager.register(dependent)).rejects.toThrow(/requires "base-plugin@\^1\.0\.0" but found version "2\.0\.0"/);
     });
 
-    it('should detect circular dependencies', async () => {
+    it('should handle dependency chains and missing dependencies correctly', async () => {
       // Test case: trying to register a plugin with an unmet dependency
       // This demonstrates that the dependency system prevents invalid states
       const pluginA = createPlugin({

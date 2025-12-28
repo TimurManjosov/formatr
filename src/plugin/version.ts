@@ -124,6 +124,12 @@ export function parseRange(range: string): (version: ParsedVersion) => boolean {
   
   // Exact match (with or without =)
   const versionStr = trimmed.startsWith('=') ? trimmed.slice(1) : trimmed;
+  // Validate that the remaining string is a valid version format before parsing.
+  // This prevents silently treating unsupported range syntaxes as exact versions.
+  const versionPattern = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/;
+  if (!versionPattern.test(versionStr)) {
+    throw new Error(`Unsupported or invalid version range format: "${range}"`);
+  }
   const base = parseVersion(versionStr);
   return (v) => compareVersions(v, base) === 0;
 }

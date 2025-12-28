@@ -4,6 +4,12 @@
  * 
  * This plugin demonstrates async initialization, cleanup, and custom loader functionality.
  * It simulates database operations with mock data.
+ * 
+ * NOTE: Filter and loader functions use `this: any` because the plugin runtime context 
+ * binding happens at registration time via `bindPluginToRuntime`. The actual runtime 
+ * context implements `PluginRuntimeContext` interface with `state`, `options`, `methods`, 
+ * and `getPlugin` properties. Using `any` here is a trade-off for simpler definitions
+ * in example code. In production, you could create a typed wrapper or use type assertions.
  */
 
 import { createPlugin, PluginManager } from '../../src/plugin';

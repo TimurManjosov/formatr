@@ -53,15 +53,13 @@ export class PluginManager {
   }
 
   /**
-   * Register a plugin with the manager.
-   * @param plugin - The plugin to register
-   * @param pluginOptions - Options to pass to the plugin's init function
-   * @throws FormatrError if plugin is already registered, has invalid dependencies, or has conflicts
+   * Shared registration logic used by both register() and registerSync().
+   * Validates, binds, and stores the plugin but does NOT call init.
    */
-  async register<Options = unknown, Methods extends object = object>(
+  private prepareRegistration<Options = unknown, Methods extends object = object>(
     plugin: Plugin<Options, Methods>,
     pluginOptions?: Options
-  ): Promise<void> {
+  ): { boundPlugin: Plugin<Options, Methods>; instance: PluginInstance<Options, Methods> } {
     const name = plugin.name;
 
     // Check if plugin is already registered
@@ -97,7 +95,6 @@ export class PluginManager {
               `Plugin "${name}" cannot register it again.`
             );
           }
-          // Warn about filter override
           this.options.onWarning(
             `Filter "${filterName}" from plugin "${name}" overrides filter from plugin "${existingPlugin}"`
           );
@@ -116,6 +113,21 @@ export class PluginManager {
     // Store plugin
     this.plugins.set(name, instance as unknown as PluginInstance);
     this.pluginOrder.push(name);
+
+    return { boundPlugin, instance };
+  }
+
+  /**
+   * Register a plugin with the manager.
+   * @param plugin - The plugin to register
+   * @param pluginOptions - Options to pass to the plugin's init function
+   * @throws FormatrError if plugin is already registered, has invalid dependencies, or has conflicts
+   */
+  async register<Options = unknown, Methods extends object = object>(
+    plugin: Plugin<Options, Methods>,
+    pluginOptions?: Options
+  ): Promise<void> {
+    const { boundPlugin } = this.prepareRegistration(plugin, pluginOptions);
 
     // Initialize plugin
     if (boundPlugin.init) {
@@ -130,70 +142,33 @@ export class PluginManager {
     plugin: Plugin<Options, Methods>,
     pluginOptions?: Options
   ): void {
-    const name = plugin.name;
-
     // Check if plugin has async init
     if (plugin.init && isAsyncFunction(plugin.init)) {
       throw new FormatrError(
-        `Plugin "${name}" has async init. Use register() instead of registerSync().`
+        `Plugin "${plugin.name}" has async init. Use register() instead of registerSync().`
       );
     }
 
-    // Check if plugin is already registered
-    if (this.plugins.has(name)) {
-      throw new FormatrError(`Plugin "${name}" is already registered`);
-    }
-
-    // Check dependencies before registration
-    this.checkDependencies(plugin);
-
-    // Check for circular dependencies
-    this.checkCircularDependencies(plugin);
-
-    // Create runtime context
-    const runtime: PluginRuntimeContext<Options, Methods> = {
-      options: pluginOptions as Options,
-      state: {},
-      getPlugin: (pluginName: string) => this.get(pluginName),
-      methods: {} as Methods,
-    };
-
-    // Bind plugin hooks to runtime context
-    const boundPlugin = bindPluginToRuntime(plugin, runtime);
-
-    // Check for filter conflicts
-    if (plugin.filters) {
-      for (const filterName of Object.keys(plugin.filters)) {
-        const existingPlugin = this.filterRegistry.get(filterName);
-        if (existingPlugin) {
-          if (this.options.filterConflict === 'error') {
-            throw new FormatrError(
-              `Filter "${filterName}" is already registered by plugin "${existingPlugin}". ` +
-              `Plugin "${name}" cannot register it again.`
-            );
-          }
-          this.options.onWarning(
-            `Filter "${filterName}" from plugin "${name}" overrides filter from plugin "${existingPlugin}"`
-          );
-        }
-        this.filterRegistry.set(filterName, name);
-      }
-    }
-
-    // Create plugin instance
-    const instance: PluginInstance<Options, Methods> = {
-      plugin: boundPlugin,
-      runtime,
-      hasAsyncHooks: hasAsyncHooks(plugin),
-    };
-
-    // Store plugin
-    this.plugins.set(name, instance as unknown as PluginInstance);
-    this.pluginOrder.push(name);
+    const { boundPlugin } = this.prepareRegistration(plugin, pluginOptions);
 
     // Initialize plugin synchronously
     if (boundPlugin.init) {
       boundPlugin.init(pluginOptions as Options);
+    }
+  }
+
+  /**
+   * Shared cleanup logic for removing a plugin from registries.
+   */
+  private removeFromRegistries(name: string): void {
+    this.plugins.delete(name);
+    this.pluginOrder = this.pluginOrder.filter((n) => n !== name);
+
+    // Remove filters from registry
+    for (const [filterName, pluginName] of this.filterRegistry.entries()) {
+      if (pluginName === name) {
+        this.filterRegistry.delete(filterName);
+      }
     }
   }
 
@@ -210,16 +185,7 @@ export class PluginManager {
       await instance.plugin.cleanup();
     }
 
-    // Remove from registries
-    this.plugins.delete(name);
-    this.pluginOrder = this.pluginOrder.filter((n) => n !== name);
-
-    // Remove filters from registry
-    for (const [filterName, pluginName] of this.filterRegistry.entries()) {
-      if (pluginName === name) {
-        this.filterRegistry.delete(filterName);
-      }
-    }
+    this.removeFromRegistries(name);
   }
 
   /**
@@ -241,16 +207,7 @@ export class PluginManager {
       instance.plugin.cleanup();
     }
 
-    // Remove from registries
-    this.plugins.delete(name);
-    this.pluginOrder = this.pluginOrder.filter((n) => n !== name);
-
-    // Remove filters from registry
-    for (const [filterName, pluginName] of this.filterRegistry.entries()) {
-      if (pluginName === name) {
-        this.filterRegistry.delete(filterName);
-      }
-    }
+    this.removeFromRegistries(name);
   }
 
   /**
@@ -315,6 +272,28 @@ export class PluginManager {
   }
 
   /**
+   * Validate a hook for synchronous execution.
+   * @throws FormatrError if hook is async or returns a Promise
+   */
+  private validateSyncHook<T>(
+    hook: ((...args: any[]) => T | Promise<T>) | undefined,
+    pluginName: string,
+    hookName: string,
+    result: unknown
+  ): void {
+    if (hook && isAsyncFunction(hook)) {
+      throw new FormatrError(
+        `Plugin "${pluginName}" has async ${hookName} hook. Use async render methods.`
+      );
+    }
+    if (result instanceof Promise) {
+      throw new FormatrError(
+        `Plugin "${pluginName}" ${hookName} hook returned a Promise. Use async render methods.`
+      );
+    }
+  }
+
+  /**
    * Execute beforeRender hooks in registration order.
    * If any hook sets skipRender: true, execution stops and returns the cached result.
    */
@@ -354,18 +333,10 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.beforeRender;
       if (hook) {
-        if (isAsyncFunction(hook)) {
-          throw new FormatrError(
-            `Plugin "${name}" has async beforeRender hook. Use async render methods.`
-          );
-        }
+        this.validateSyncHook(hook, name, 'beforeRender', undefined);
         const hookResult = hook(result.template, result.context, options);
-        if (hookResult instanceof Promise) {
-          throw new FormatrError(
-            `Plugin "${name}" beforeRender hook returned a Promise. Use async render methods.`
-          );
-        }
-        result = hookResult;
+        this.validateSyncHook(undefined, name, 'beforeRender', hookResult);
+        result = hookResult as BeforeRenderResult;
         if (result.skipRender) {
           return result;
         }
@@ -408,18 +379,10 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.afterRender;
       if (hook) {
-        if (isAsyncFunction(hook)) {
-          throw new FormatrError(
-            `Plugin "${name}" has async afterRender hook. Use async render methods.`
-          );
-        }
+        this.validateSyncHook(hook, name, 'afterRender', undefined);
         const hookResult = hook(output, metadata);
-        if (hookResult instanceof Promise) {
-          throw new FormatrError(
-            `Plugin "${name}" afterRender hook returned a Promise. Use async render methods.`
-          );
-        }
-        output = hookResult;
+        this.validateSyncHook(undefined, name, 'afterRender', hookResult);
+        output = hookResult as string;
       }
     }
 
@@ -466,18 +429,10 @@ export class PluginManager {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.onError;
       if (hook) {
-        if (isAsyncFunction(hook)) {
-          throw new FormatrError(
-            `Plugin "${name}" has async onError hook. Use async render methods.`
-          );
-        }
+        this.validateSyncHook(hook, name, 'onError', undefined);
         try {
           const result = hook(currentError, context);
-          if (result instanceof Promise) {
-            throw new FormatrError(
-              `Plugin "${name}" onError hook returned a Promise. Use async render methods.`
-            );
-          }
+          this.validateSyncHook(undefined, name, 'onError', result);
           if (result instanceof Error) {
             currentError = result;
           }

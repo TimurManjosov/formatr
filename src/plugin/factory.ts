@@ -165,7 +165,7 @@ export function bindPluginToRuntime<Options = unknown, Methods extends object = 
         boundFilters[key] = filter;
       }
     }
-    bound.filters = boundFilters as typeof bound.filters;
+    (bound as any).filters = boundFilters;
   }
 
   // Bind custom methods

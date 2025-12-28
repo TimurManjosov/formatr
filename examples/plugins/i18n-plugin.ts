@@ -4,6 +4,12 @@
  * 
  * This plugin demonstrates adding i18n support with filters and context injection.
  * In production, you might use a library like i18next.
+ * 
+ * NOTE: Filter functions use `this: any` because the plugin runtime context binding
+ * happens at registration time via `bindPluginToRuntime`. The actual runtime context
+ * implements `PluginRuntimeContext` interface with `state`, `options`, `methods`, and
+ * `getPlugin` properties. Using `any` here is a trade-off for simpler filter definitions
+ * in example code. In production, you could create a typed wrapper or use type assertions.
  */
 
 import { createPlugin, PluginManager } from '../../src/plugin';
@@ -31,6 +37,9 @@ const i18nPlugin = createPlugin<I18nOptions>({
   },
 
   filters: {
+    // Note: `this: any` is used because the runtime context is bound dynamically.
+    // The actual `this` at runtime will be the PluginRuntimeContext with `state`, `options`, etc.
+    
     // Translate a key
     t: function(this: any, key: unknown) {
       const keyStr = String(key);
