@@ -304,6 +304,37 @@ export class PluginManager {
   }
 
   /**
+   * Get beforeRender hooks with their plugin names in registration order.
+   */
+  private getBeforeRenderHooks(): Array<{ name: string; hook: NonNullable<Plugin['middleware']>['beforeRender'] }> {
+    const hooks: Array<{ name: string; hook: NonNullable<Plugin['middleware']>['beforeRender'] }> = [];
+    for (const name of this.pluginOrder) {
+      const instance = this.plugins.get(name);
+      const hook = instance?.plugin.middleware?.beforeRender;
+      if (hook) {
+        hooks.push({ name, hook });
+      }
+    }
+    return hooks;
+  }
+
+  /**
+   * Get afterRender hooks with their plugin names in reverse order (LIFO).
+   */
+  private getAfterRenderHooks(): Array<{ name: string; hook: NonNullable<Plugin['middleware']>['afterRender'] }> {
+    const hooks: Array<{ name: string; hook: NonNullable<Plugin['middleware']>['afterRender'] }> = [];
+    for (let i = this.pluginOrder.length - 1; i >= 0; i--) {
+      const name = this.pluginOrder[i]!;
+      const instance = this.plugins.get(name);
+      const hook = instance?.plugin.middleware?.afterRender;
+      if (hook) {
+        hooks.push({ name, hook });
+      }
+    }
+    return hooks;
+  }
+
+  /**
    * Execute beforeRender hooks in registration order.
    * If any hook sets skipRender: true, execution stops and returns the cached result.
    */
@@ -314,14 +345,10 @@ export class PluginManager {
   ): Promise<BeforeRenderResult> {
     let result: BeforeRenderResult = { template, context };
 
-    for (const name of this.pluginOrder) {
-      const instance = this.plugins.get(name);
-      const hook = instance?.plugin.middleware?.beforeRender;
-      if (hook) {
-        result = await hook(result.template, result.context, options);
-        if (result.skipRender) {
-          return result;
-        }
+    for (const { hook } of this.getBeforeRenderHooks()) {
+      result = await hook(result.template, result.context, options);
+      if (result.skipRender) {
+        return result;
       }
     }
 
@@ -339,17 +366,13 @@ export class PluginManager {
   ): BeforeRenderResult {
     let result: BeforeRenderResult = { template, context };
 
-    for (const name of this.pluginOrder) {
-      const instance = this.plugins.get(name);
-      const hook = instance?.plugin.middleware?.beforeRender;
-      if (hook) {
-        this.validateHookNotAsync(hook, name, 'beforeRender');
-        const hookResult = hook(result.template, result.context, options);
-        this.validateResultNotPromise(hookResult, name, 'beforeRender');
-        result = hookResult as BeforeRenderResult;
-        if (result.skipRender) {
-          return result;
-        }
+    for (const { name, hook } of this.getBeforeRenderHooks()) {
+      this.validateHookNotAsync(hook, name, 'beforeRender');
+      const hookResult = hook(result.template, result.context, options);
+      this.validateResultNotPromise(hookResult, name, 'beforeRender');
+      result = hookResult as BeforeRenderResult;
+      if (result.skipRender) {
+        return result;
       }
     }
 
@@ -363,14 +386,8 @@ export class PluginManager {
   async executeAfterRender(result: string, metadata: RenderMetadata): Promise<string> {
     let output = result;
 
-    // Execute in reverse order (LIFO)
-    for (let i = this.pluginOrder.length - 1; i >= 0; i--) {
-      const name = this.pluginOrder[i]!;
-      const instance = this.plugins.get(name);
-      const hook = instance?.plugin.middleware?.afterRender;
-      if (hook) {
-        output = await hook(output, metadata);
-      }
+    for (const { hook } of this.getAfterRenderHooks()) {
+      output = await hook(output, metadata);
     }
 
     return output;
@@ -383,17 +400,11 @@ export class PluginManager {
   executeAfterRenderSync(result: string, metadata: RenderMetadata): string {
     let output = result;
 
-    // Execute in reverse order (LIFO)
-    for (let i = this.pluginOrder.length - 1; i >= 0; i--) {
-      const name = this.pluginOrder[i]!;
-      const instance = this.plugins.get(name);
-      const hook = instance?.plugin.middleware?.afterRender;
-      if (hook) {
-        this.validateHookNotAsync(hook, name, 'afterRender');
-        const hookResult = hook(output, metadata);
-        this.validateResultNotPromise(hookResult, name, 'afterRender');
-        output = hookResult as string;
-      }
+    for (const { name, hook } of this.getAfterRenderHooks()) {
+      this.validateHookNotAsync(hook, name, 'afterRender');
+      const hookResult = hook(output, metadata);
+      this.validateResultNotPromise(hookResult, name, 'afterRender');
+      output = hookResult as string;
     }
 
     return output;
