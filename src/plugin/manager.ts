@@ -9,6 +9,8 @@ import type {
   RenderMetadata,
   ErrorContext,
   RenderOptions,
+  BeforeRenderHook,
+  AfterRenderHook,
 } from './types';
 import { bindPluginToRuntime, hasAsyncHooks, isAsyncFunction } from './factory';
 import { satisfies } from './version';
@@ -276,7 +278,7 @@ export class PluginManager {
    * @throws FormatrError if hook is async
    */
   private validateHookNotAsync(
-    hook: ((...args: unknown[]) => unknown) | undefined,
+    hook: ((...args: never[]) => unknown) | undefined,
     pluginName: string,
     hookName: string
   ): void {
@@ -306,8 +308,8 @@ export class PluginManager {
   /**
    * Get beforeRender hooks with their plugin names in registration order.
    */
-  private getBeforeRenderHooks(): Array<{ name: string; hook: NonNullable<Plugin['middleware']>['beforeRender'] }> {
-    const hooks: Array<{ name: string; hook: NonNullable<Plugin['middleware']>['beforeRender'] }> = [];
+  private getBeforeRenderHooks(): Array<{ name: string; hook: BeforeRenderHook }> {
+    const hooks: Array<{ name: string; hook: BeforeRenderHook }> = [];
     for (const name of this.pluginOrder) {
       const instance = this.plugins.get(name);
       const hook = instance?.plugin.middleware?.beforeRender;
@@ -321,8 +323,8 @@ export class PluginManager {
   /**
    * Get afterRender hooks with their plugin names in reverse order (LIFO).
    */
-  private getAfterRenderHooks(): Array<{ name: string; hook: NonNullable<Plugin['middleware']>['afterRender'] }> {
-    const hooks: Array<{ name: string; hook: NonNullable<Plugin['middleware']>['afterRender'] }> = [];
+  private getAfterRenderHooks(): Array<{ name: string; hook: AfterRenderHook }> {
+    const hooks: Array<{ name: string; hook: AfterRenderHook }> = [];
     for (let i = this.pluginOrder.length - 1; i >= 0; i--) {
       const name = this.pluginOrder[i]!;
       const instance = this.plugins.get(name);
