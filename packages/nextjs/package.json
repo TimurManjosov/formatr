@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@formatr/shared": "file:../shared",
-    "@timur_manjosov/formatr": "file:../.."
+    "@formatr/core": "file:../.."
   },
   "devDependencies": {
     "@types/node": "^24.7.1",

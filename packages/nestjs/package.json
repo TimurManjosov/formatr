@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@formatr/shared": "file:../shared",
-    "@timur_manjosov/formatr": "file:../.."
+    "@formatr/core": "file:../.."
   },
   "devDependencies": {
     "@nestjs/common": "^10.4.15",
