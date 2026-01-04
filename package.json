@@ -1,5 +1,5 @@
 {
-  "name": "@timur_manjosov/formatr",
+  "name": "@formatr/core",
   "version": "0.6.1",
   "description": "",
   "publishConfig": {
@@ -50,7 +50,7 @@
   "sideEffects": false,
   "lint": "eslint . --ext .ts",
   "type": "module",
-  "private": true,
+  "private": false,
   "workspaces": [
     "packages/*"
   ]
