@@ -50,6 +50,7 @@
   "sideEffects": false,
   "lint": "eslint . --ext .ts",
   "type": "module",
+  "private": true,
   "workspaces": [
     "packages/*"
   ]
