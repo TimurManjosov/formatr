@@ -10,8 +10,10 @@ import {
 } from './core/registry';
 
 const DEFAULT_CACHE_SIZE = 200;
-const compiledCache = new LRU<string, (ctx: any) => string>(DEFAULT_CACHE_SIZE);
-const compiledAsyncCache = new LRU<string, (ctx: any) => Promise<string>>(DEFAULT_CACHE_SIZE);
+let compiledCacheSize = DEFAULT_CACHE_SIZE;
+let compiledCache = new LRU<string, (ctx: any) => string>(DEFAULT_CACHE_SIZE);
+let compiledAsyncCacheSize = DEFAULT_CACHE_SIZE;
+let compiledAsyncCache = new LRU<string, (ctx: any) => Promise<string>>(DEFAULT_CACHE_SIZE);
 
 /**
  * Clears the compiled template cache.
@@ -36,7 +38,7 @@ export function clearCompiledCache(): void {
 export function registerTemplate(name: string, source: string): void {
   _registerTemplate(name, source);
   // Clear compiled cache since templates using this include need to be recompiled
-  compiledCache.clear();
+  clearCompiledCache();
 }
 
 /**
@@ -46,7 +48,7 @@ export function registerTemplate(name: string, source: string): void {
  */
 export function clearTemplates(): void {
   _clearTemplates();
-  compiledCache.clear();
+  clearCompiledCache();
 }
 
 // Re-export other registry functions
@@ -128,11 +130,9 @@ export function template<T extends Ctx = Ctx>(
   options: CompileOptions = {}
 ): (ctx: T) => string {
   const cacheSize = options.cacheSize ?? DEFAULT_CACHE_SIZE;
-  if (cacheSize !== compiledCache['max']) {
-    // Recreate cache if user overrides size (simple approach).
-    // Alternatively keep a map: size -> LRU.
-    (compiledCache as any).max = cacheSize; // adjust at runtime
-    if (cacheSize === 0) compiledCache.clear();
+  if (cacheSize !== compiledCacheSize) {
+    compiledCache = new LRU<string, (ctx: any) => string>(cacheSize);
+    compiledCacheSize = cacheSize;
   }
 
   if (cacheSize > 0) {
@@ -190,9 +190,9 @@ export function templateAsync<T extends Ctx = Ctx>(
   options: CompileOptions = {}
 ): (ctx: T) => Promise<string> {
   const cacheSize = options.cacheSize ?? DEFAULT_CACHE_SIZE;
-  if (cacheSize !== compiledAsyncCache['max']) {
-    (compiledAsyncCache as any).max = cacheSize;
-    if (cacheSize === 0) compiledAsyncCache.clear();
+  if (cacheSize !== compiledAsyncCacheSize) {
+    compiledAsyncCache = new LRU<string, (ctx: any) => Promise<string>>(cacheSize);
+    compiledAsyncCacheSize = cacheSize;
   }
 
   if (cacheSize > 0) {

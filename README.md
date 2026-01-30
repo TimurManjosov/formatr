@@ -6,8 +6,8 @@
 
 A tiny, type‑safe templating engine that combines placeholders, filters, internationalization (i18n), and dot‑path support into a single, familiar syntax. `formatr` lets you compose strings declaratively while catching errors at compile time.
 
-[![npm version](https://img.shields.io/npm/v/@timur_manjosov/formatr.svg?style=flat-square)](https://www.npmjs.com/package/@timur_manjosov/formatr)
-[![npm downloads](https://img.shields.io/npm/dm/@timur_manjosov/formatr.svg?style=flat-square)](https://www.npmjs.com/package/@timur_manjosov/formatr)
+[![npm version](https://img.shields.io/npm/v/@formatr/core.svg?style=flat-square)](https://www.npmjs.com/package/@formatr/core)
+[![npm downloads](https://img.shields.io/npm/dm/@formatr/core.svg?style=flat-square)](https://www.npmjs.com/package/@formatr/core)
 [![license](https://img.shields.io/github/license/TimurManjosov/formatr.svg?style=flat-square)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 
